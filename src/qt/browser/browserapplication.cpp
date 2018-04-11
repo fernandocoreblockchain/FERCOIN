@@ -1,39 +1,48 @@
 /****************************************************************************
 **
-** Copyright (C) 2013 Digia Plc and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/legal
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
-** This file is part of the demonstration applications of the Qt Toolkit.
+** This file is part of the examples of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL$
+** $QT_BEGIN_LICENSE:BSD$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and Digia.  For licensing terms and
-** conditions see http://qt.digia.com/licensing.  For further information
-** use the contact form at http://qt.digia.com/contact-us.
+** a written agreement between you and The Qt Company. For licensing terms
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** BSD License Usage
+** Alternatively, you may use this file under the terms of the BSD license
+** as follows:
 **
-** In addition, as a special exception, Digia gives you certain additional
-** rights.  These rights are described in the Digia Qt LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** "Redistribution and use in source and binary forms, with or without
+** modification, are permitted provided that the following conditions are
+** met:
+**   * Redistributions of source code must retain the above copyright
+**     notice, this list of conditions and the following disclaimer.
+**   * Redistributions in binary form must reproduce the above copyright
+**     notice, this list of conditions and the following disclaimer in
+**     the documentation and/or other materials provided with the
+**     distribution.
+**   * Neither the name of The Qt Company Ltd nor the names of its
+**     contributors may be used to endorse or promote products derived
+**     from this software without specific prior written permission.
 **
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3.0 as published by the Free Software
-** Foundation and appearing in the file LICENSE.GPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU General Public License version 3.0 requirements will be
-** met: http://www.gnu.org/copyleft/gpl.html.
 **
+** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+** "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+** LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+** A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+** OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+** SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+** LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+** OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
 **
 ** $QT_END_LICENSE$
 **
@@ -46,10 +55,8 @@
 #include "cookiejar.h"
 #include "downloadmanager.h"
 #include "history.h"
-#include "networkaccessmanager.h"
 #include "tabwidget.h"
 #include "webview.h"
-#include "settings.h"
 
 #include <QtCore/QBuffer>
 #include <QtCore/QDir>
@@ -67,47 +74,76 @@
 #include <QtNetwork/QNetworkProxy>
 #include <QtNetwork/QSslSocket>
 
-#include <QtWebKit/QWebSettings>
+#include <QWebEngineProfile>
+#include <QWebEngineSettings>
+#include <QWebEngineScript>
+#include <QWebEngineScriptCollection>
 
 #include <QtCore/QDebug>
 
 DownloadManager *BrowserApplication::s_downloadManager = 0;
 HistoryManager *BrowserApplication::s_historyManager = 0;
-NetworkAccessManager *BrowserApplication::s_networkAccessManager = 0;
+QNetworkAccessManager *BrowserApplication::s_networkAccessManager = 0;
 BookmarksManager *BrowserApplication::s_bookmarksManager = 0;
 
-//BrowserApplication::BrowserApplication(int &argc, char **argv)
-//    : QApplication(argc, argv)
-//    , m_localServer(0)
-BrowserApplication::BrowserApplication()
-        : QObject(), m_localServer(0)
+static void setUserStyleSheet(QWebEngineProfile *profile, const QString &styleSheet, BrowserMainWindow *mainWindow = 0)
 {
-/*    QCoreApplication::setOrganizationName(QLatin1String("Qt"));
+    Q_ASSERT(profile);
+    QString scriptName(QStringLiteral("userStyleSheet"));
+    QWebEngineScript script;
+    QList<QWebEngineScript> styleSheets = profile->scripts()->findScripts(scriptName);
+    if (!styleSheets.isEmpty())
+        script = styleSheets.first();
+    Q_FOREACH (const QWebEngineScript &s, styleSheets)
+        profile->scripts()->remove(s);
+
+    if (script.isNull()) {
+        script.setName(scriptName);
+        script.setInjectionPoint(QWebEngineScript::DocumentReady);
+        script.setRunsOnSubFrames(true);
+        script.setWorldId(QWebEngineScript::ApplicationWorld);
+    }
+    QString source = QString::fromLatin1("(function() {"\
+                                         "var css = document.getElementById(\"_qt_testBrowser_userStyleSheet\");"\
+                                         "if (css == undefined) {"\
+                                         "    css = document.createElement(\"style\");"\
+                                         "    css.type = \"text/css\";"\
+                                         "    css.id = \"_qt_testBrowser_userStyleSheet\";"\
+                                         "    document.head.appendChild(css);"\
+                                         "}"\
+                                         "css.innerText = \"%1\";"\
+                                         "})()").arg(styleSheet);
+    script.setSourceCode(source);
+    profile->scripts()->insert(script);
+    // run the script on the already loaded views
+    // this has to be deferred as it could mess with the storage initialization on startup
+    if (mainWindow)
+        QMetaObject::invokeMethod(mainWindow, "runScriptOnOpenViews", Qt::QueuedConnection, Q_ARG(QString, source));
+}
+
+BrowserApplication::BrowserApplication(/* int &argc, char **argv */)
+    : QObject(),
+    , m_localServer(0)
+    , m_privateProfile(0)
+    , m_privateBrowsing(false)
+{
+/*
+    QCoreApplication::setOrganizationName(QLatin1String("Qt"));
     QCoreApplication::setApplicationName(QLatin1String("demobrowser"));
     QCoreApplication::setApplicationVersion(QLatin1String("0.1"));
-#ifdef Q_WS_QWS
-    // Use a different server name for QWS so we can run an X11
-    // browser and a QWS browser in parallel on the same machine for
-    // debugging
-    QString serverName = QCoreApplication::applicationName() + QLatin1String("_qws");
-#else
-    QString serverName = QCoreApplication::applicationName();
-#endif
+    QString serverName = QCoreApplication::applicationName()
+        + QString::fromLatin1(QT_VERSION_STR).remove('.') + QLatin1String("webengine");
     QLocalSocket socket;
     socket.connectToServer(serverName);
     if (socket.waitForConnected(500)) {
         QTextStream stream(&socket);
-        QStringList args = QCoreApplication::arguments();
-        if (args.count() > 1)
-            stream << args.last();
-        else
-            stream << QString();
+        stream << getCommandLineUrlArgument();
         stream.flush();
         socket.waitForBytesWritten();
         return;
     }
 
-#if defined(Q_WS_MAC)
+#if defined(Q_OS_OSX)
     QApplication::setQuitOnLastWindowClosed(false);
 #else
     QApplication::setQuitOnLastWindowClosed(true);
@@ -116,12 +152,11 @@ BrowserApplication::BrowserApplication()
     m_localServer = new QLocalServer(this);
     connect(m_localServer, SIGNAL(newConnection()),
             this, SLOT(newLocalSocketConnection()));
-    if (!m_localServer->listen(serverName)) {
-        if (m_localServer->serverError() == QAbstractSocket::AddressInUseError
-            && QFile::exists(m_localServer->serverName())) {
-            QFile::remove(m_localServer->serverName());
-            m_localServer->listen(serverName);
-        }
+    if (!m_localServer->listen(serverName)
+            && m_localServer->serverError() == QAbstractSocket::AddressInUseError) {
+        QLocalServer::removeServer(serverName);
+        if (!m_localServer->listen(serverName))
+            qWarning("Could not create local socket %s.", qPrintable(serverName));
     }
 
 #ifndef QT_NO_OPENSSL
@@ -142,14 +177,12 @@ BrowserApplication::BrowserApplication()
     m_lastSession = settings.value(QLatin1String("lastSession")).toByteArray();
     settings.endGroup();
 /*
-#if defined(Q_WS_MAC)
+#if defined(Q_OS_OSX)
     connect(this, SIGNAL(lastWindowClosed()),
             this, SLOT(lastWindowClosed()));
 #endif
 */
     QTimer::singleShot(0, this, SLOT(postLaunch()));
-
-    //postLaunch();
 }
 
 BrowserApplication::~BrowserApplication()
@@ -163,15 +196,15 @@ BrowserApplication::~BrowserApplication()
     delete s_bookmarksManager;
 }
 
-#if defined(Q_WS_MAC)
 void BrowserApplication::lastWindowClosed()
 {
+#if defined(Q_OS_OSX)
     clean();
     BrowserMainWindow *mw = new BrowserMainWindow;
     mw->slotHome();
     m_mainWindows.prepend(mw);
-}
 #endif
+}
 
 BrowserApplication *browserApp = NULL;
 BrowserApplication *BrowserApplication::instance()
@@ -189,14 +222,14 @@ void BrowserApplication::deleteBrowserApp()
     }
 }
 
-#if defined(Q_WS_MAC)
-#include <QtWidgets/QMessageBox>
+
 void BrowserApplication::quitBrowser()
 {
+#if defined(Q_OS_OSX)
     clean();
     int tabCount = 0;
     for (int i = 0; i < m_mainWindows.count(); ++i) {
-        tabCount =+ m_mainWindows.at(i)->tabWidget()->count();
+        tabCount += m_mainWindows.at(i)->tabWidget()->count();
     }
 
     if (tabCount > 1) {
@@ -210,8 +243,8 @@ void BrowserApplication::quitBrowser()
     }
 
     exit(0);
-}
 #endif
+}
 
 /*!
     Any actions that can be delayed until the window is visible
@@ -220,22 +253,26 @@ void BrowserApplication::postLaunch()
 {
     //QString directory = QStandardPaths::writableLocation(QStandardPaths::DataLocation);
     //if (directory.isEmpty())
-    //    directory = QDir::homePath() + QLatin1String("/.") + QCoreApplication::applicationName() + QLatin1String("/browser");
+    //    directory = QDir::homePath() + QLatin1String("/.") + QCoreApplication::applicationName();
     QString directory = getDataDirectory();
-    QWebSettings::setIconDatabasePath(directory);
-    QWebSettings::setOfflineStoragePath(directory);
+#if defined(QWEBENGINESETTINGS_PATHS)
+    QWebEngineSettings::setIconDatabasePath(directory);
+    QWebEngineSettings::setOfflineStoragePath(directory);
+#endif
 
-//    setWindowIcon(QIcon(QLatin1String(":browser.svg")));
+    // setWindowIcon(QIcon(QLatin1String(":demobrowser.svg")));
 
     loadSettings();
 
     // newMainWindow() needs to be called in main() for this to happen
     if (m_mainWindows.count() > 0) {
-        QStringList args = QCoreApplication::arguments();
-        if (args.count() > 1)
-            mainWindow()->loadPage(args.last());
-        else
+        const QString url = getCommandLineUrlArgument();
+        if (!url.isEmpty()) {
+            mainWindow()->loadPage(url);
+        } else {
             mainWindow()->slotHome();
+        }
+
     }
     BrowserApplication::historyManager();
 }
@@ -245,29 +282,75 @@ void BrowserApplication::loadSettings()
     QSettings settings;
     settings.beginGroup(QLatin1String("websettings"));
 
-    QWebSettings *defaultSettings = QWebSettings::globalSettings();
-    QString standardFontFamily = defaultSettings->fontFamily(QWebSettings::StandardFont);
-    int standardFontSize = defaultSettings->fontSize(QWebSettings::DefaultFontSize);
+    QWebEngineSettings *defaultSettings = QWebEngineSettings::globalSettings();
+    QWebEngineProfile *defaultProfile = QWebEngineProfile::defaultProfile();
+
+    QString standardFontFamily = defaultSettings->fontFamily(QWebEngineSettings::StandardFont);
+    int standardFontSize = defaultSettings->fontSize(QWebEngineSettings::DefaultFontSize);
     QFont standardFont = QFont(standardFontFamily, standardFontSize);
     standardFont = qvariant_cast<QFont>(settings.value(QLatin1String("standardFont"), standardFont));
-    defaultSettings->setFontFamily(QWebSettings::StandardFont, standardFont.family());
-    defaultSettings->setFontSize(QWebSettings::DefaultFontSize, standardFont.pointSize());
+    defaultSettings->setFontFamily(QWebEngineSettings::StandardFont, standardFont.family());
+    defaultSettings->setFontSize(QWebEngineSettings::DefaultFontSize, standardFont.pointSize());
 
-    QString fixedFontFamily = defaultSettings->fontFamily(QWebSettings::FixedFont);
-    int fixedFontSize = defaultSettings->fontSize(QWebSettings::DefaultFixedFontSize);
+    QString fixedFontFamily = defaultSettings->fontFamily(QWebEngineSettings::FixedFont);
+    int fixedFontSize = defaultSettings->fontSize(QWebEngineSettings::DefaultFixedFontSize);
     QFont fixedFont = QFont(fixedFontFamily, fixedFontSize);
     fixedFont = qvariant_cast<QFont>(settings.value(QLatin1String("fixedFont"), fixedFont));
-    defaultSettings->setFontFamily(QWebSettings::FixedFont, fixedFont.family());
-    defaultSettings->setFontSize(QWebSettings::DefaultFixedFontSize, fixedFont.pointSize());
+    defaultSettings->setFontFamily(QWebEngineSettings::FixedFont, fixedFont.family());
+    defaultSettings->setFontSize(QWebEngineSettings::DefaultFixedFontSize, fixedFont.pointSize());
 
-    defaultSettings->setAttribute(QWebSettings::JavascriptEnabled, settings.value(QLatin1String("enableJavascript"), false).toBool());
-    defaultSettings->setAttribute(QWebSettings::PluginsEnabled, settings.value(QLatin1String("enablePlugins"), false).toBool());
+    defaultSettings->setAttribute(QWebEngineSettings::JavascriptEnabled, settings.value(QLatin1String("enableJavascript"), false).toBool());
+    defaultSettings->setAttribute(QWebEngineSettings::ScrollAnimatorEnabled, settings.value(QLatin1String("enableScrollAnimator"), true).toBool());
 
-    QUrl url = settings.value(QLatin1String("userStyleSheet")).toUrl();
-    defaultSettings->setUserStyleSheetUrl(url);
+    defaultSettings->setAttribute(QWebEngineSettings::PluginsEnabled, settings.value(QLatin1String("enablePlugins"), false).toBool());
 
-    defaultSettings->setAttribute(QWebSettings::DnsPrefetchEnabled, true);
+    defaultSettings->setAttribute(QWebEngineSettings::FullScreenSupportEnabled, true);
 
+    QString css = settings.value(QLatin1String("userStyleSheet")).toString();
+    setUserStyleSheet(defaultProfile, css, mainWindow());
+
+    defaultProfile->setHttpUserAgent(settings.value(QLatin1String("httpUserAgent")).toString());
+    defaultProfile->setHttpAcceptLanguage(settings.value(QLatin1String("httpAcceptLanguage")).toString());
+
+    switch (settings.value(QLatin1String("faviconDownloadMode"), 1).toInt()) {
+    case 0:
+        defaultSettings->setAttribute(QWebEngineSettings::AutoLoadIconsForPage, false);
+        break;
+    case 1:
+        defaultSettings->setAttribute(QWebEngineSettings::AutoLoadIconsForPage, true);
+        defaultSettings->setAttribute(QWebEngineSettings::TouchIconsEnabled, false);
+        break;
+    case 2:
+        defaultSettings->setAttribute(QWebEngineSettings::AutoLoadIconsForPage, true);
+        defaultSettings->setAttribute(QWebEngineSettings::TouchIconsEnabled, true);
+        break;
+    }
+
+    settings.endGroup();
+    settings.beginGroup(QLatin1String("cookies"));
+
+    QWebEngineProfile::PersistentCookiesPolicy persistentCookiesPolicy =
+            QWebEngineProfile::PersistentCookiesPolicy(settings.value(QLatin1String("persistentCookiesPolicy"),
+                                                                      QWebEngineProfile::AllowPersistentCookies).toInt());
+    defaultProfile->setPersistentCookiesPolicy(persistentCookiesPolicy);
+    QString pdataPath = settings.value(QLatin1String("persistentDataPath")).toString();
+    defaultProfile->setPersistentStoragePath(pdataPath);
+
+    settings.endGroup();
+
+    settings.beginGroup(QLatin1String("proxy"));
+    QNetworkProxy proxy;
+    if (settings.value(QLatin1String("enabled"), false).toBool()) {
+        if (settings.value(QLatin1String("type"), 0).toInt() == 0)
+            proxy = QNetworkProxy::Socks5Proxy;
+        else
+            proxy = QNetworkProxy::HttpProxy;
+        proxy.setHostName(settings.value(QLatin1String("hostName")).toString());
+        proxy.setPort(settings.value(QLatin1String("port"), 1080).toInt());
+        proxy.setUser(settings.value(QLatin1String("userName")).toString());
+        proxy.setPassword(settings.value(QLatin1String("password")).toString());
+        QNetworkProxy::setApplicationProxy(proxy);
+    }
     settings.endGroup();
 }
 
@@ -290,8 +373,7 @@ void BrowserApplication::clean()
 
 void BrowserApplication::saveSession()
 {
-    QWebSettings *globalSettings = QWebSettings::globalSettings();
-    if (globalSettings->testAttribute(QWebSettings::PrivateBrowsingEnabled))
+    if (m_privateBrowsing)
         return;
 
     clean();
@@ -356,7 +438,20 @@ void BrowserApplication::installTranslator(const QString &name)
 */
 }
 
-#if defined(Q_WS_MAC)
+QString BrowserApplication::getCommandLineUrlArgument() const
+{
+    const QStringList args = QCoreApplication::arguments();
+    if (args.count() > 1) {
+        const QString lastArg = args.last();
+        const bool isValidUrl = QUrl::fromUserInput(lastArg).isValid();
+        if (isValidUrl)
+            return lastArg;
+    }
+
+     return QString();
+}
+
+#if defined(Q_OS_OSX)
 bool BrowserApplication::event(QEvent* event)
 {
     switch (event->type()) {
@@ -430,7 +525,11 @@ void BrowserApplication::newLocalSocketConnection()
 
 CookieJar *BrowserApplication::cookieJar()
 {
+#if defined(QWEBENGINEPAGE_SETNETWORKACCESSMANAGER)
     return (CookieJar*)networkAccessManager()->cookieJar();
+#else
+    return 0;
+#endif
 }
 
 DownloadManager *BrowserApplication::downloadManager()
@@ -441,21 +540,18 @@ DownloadManager *BrowserApplication::downloadManager()
     return s_downloadManager;
 }
 
-NetworkAccessManager *BrowserApplication::networkAccessManager()
+QNetworkAccessManager *BrowserApplication::networkAccessManager()
 {
     if (!s_networkAccessManager) {
-        s_networkAccessManager = new NetworkAccessManager();
-        s_networkAccessManager->setCookieJar(new CookieJar);
+        s_networkAccessManager = new QNetworkAccessManager();
     }
     return s_networkAccessManager;
 }
 
 HistoryManager *BrowserApplication::historyManager()
 {
-    if (!s_historyManager) {
+    if (!s_historyManager)
         s_historyManager = new HistoryManager();
-        QWebHistoryInterface::setDefaultInterface(s_historyManager);
-    }
     return s_historyManager;
 }
 
@@ -469,11 +565,40 @@ BookmarksManager *BrowserApplication::bookmarksManager()
 
 QIcon BrowserApplication::icon(const QUrl &url) const
 {
-    QIcon icon = QWebSettings::iconForUrl(url);
+#if defined(QTWEBENGINE_ICONDATABASE)
+    QIcon icon = QWebEngineSettings::iconForUrl(url);
     if (!icon.isNull())
         return icon.pixmap(16, 16);
-    if (m_defaultIcon.isNull())
-        m_defaultIcon = QIcon(QLatin1String(":defaulticon.png"));
-    return m_defaultIcon.pixmap(16, 16);
+#else
+    Q_UNUSED(url);
+#endif
+    return defaultIcon();
 }
 
+QIcon BrowserApplication::defaultIcon() const
+{
+    if (m_defaultIcon.isNull())
+        m_defaultIcon = QIcon(QLatin1String(":defaulticon.png"));
+    return m_defaultIcon;
+}
+
+void BrowserApplication::setPrivateBrowsing(bool privateBrowsing)
+{
+    if (m_privateBrowsing == privateBrowsing)
+        return;
+    m_privateBrowsing = privateBrowsing;
+    if (privateBrowsing) {
+        if (!m_privateProfile)
+            m_privateProfile = new QWebEngineProfile(this);
+        Q_FOREACH (BrowserMainWindow* window, mainWindows()) {
+            window->tabWidget()->setProfile(m_privateProfile);
+        }
+    } else {
+        Q_FOREACH (BrowserMainWindow* window, mainWindows()) {
+            window->tabWidget()->setProfile(QWebEngineProfile::defaultProfile());
+            window->m_lastSearch = QString();
+            window->tabWidget()->clear();
+        }
+    }
+    emit privateBrowsingChanged(privateBrowsing);
+}

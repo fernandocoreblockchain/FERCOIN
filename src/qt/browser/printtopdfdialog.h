@@ -48,73 +48,39 @@
 **
 ****************************************************************************/
 
-#ifndef XBEL_H
-#define XBEL_H
+#ifndef PRINTTOPDFDIALOG_H
+#define PRINTTOPDFDIALOG_H
 
-#include <QtCore/QXmlStreamReader>
-#include <QtCore/QDateTime>
+#include <QDialog>
+#include <QPageLayout>
 
-class BookmarkNode
+QT_BEGIN_NAMESPACE
+namespace Ui {
+class PrintToPdfDialog;
+}
+QT_END_NAMESPACE
+
+class PrintToPdfDialog : public QDialog
 {
+    Q_OBJECT
+
 public:
-    enum Type {
-        Root,
-        Folder,
-        Bookmark,
-        Separator
-    };
+    explicit PrintToPdfDialog(const QString &filePath, QWidget *parent = 0);
+    ~PrintToPdfDialog();
 
-    BookmarkNode(Type type = Root, BookmarkNode *parent = 0);
-    ~BookmarkNode();
-    bool operator==(const BookmarkNode &other);
+    QString filePath() const;
+    QPageLayout pageLayout() const;
 
-    Type type() const;
-    void setType(Type type);
-    QList<BookmarkNode *> children() const;
-    BookmarkNode *parent() const;
-
-    void add(BookmarkNode *child, int offset = -1);
-    void remove(BookmarkNode *child);
-
-    QString url;
-    QString title;
-    QString desc;
-    bool expanded;
+private slots:
+    void onChoosePageLayoutButtonClicked();
+    void onChooseFilePathButtonClicked();
 
 private:
-    BookmarkNode *m_parent;
-    Type m_type;
-    QList<BookmarkNode *> m_children;
+    void setFilePath(const QString &);
+    void updatePageLayoutLabel();
 
+    QPageLayout currentPageLayout;
+    Ui::PrintToPdfDialog *ui;
 };
 
-class XbelReader : public QXmlStreamReader
-{
-public:
-    XbelReader();
-    BookmarkNode *read(const QString &fileName);
-    BookmarkNode *read(QIODevice *device);
-
-private:
-    void readXBEL(BookmarkNode *parent);
-    void readTitle(BookmarkNode *parent);
-    void readDescription(BookmarkNode *parent);
-    void readSeparator(BookmarkNode *parent);
-    void readFolder(BookmarkNode *parent);
-    void readBookmarkNode(BookmarkNode *parent);
-};
-
-#include <QtCore/QXmlStreamWriter>
-
-class XbelWriter : public QXmlStreamWriter
-{
-public:
-    XbelWriter();
-    bool write(const QString &fileName, const BookmarkNode *root);
-    bool write(QIODevice *device, const BookmarkNode *root);
-
-private:
-    void writeItem(const BookmarkNode *parent);
-};
-
-#endif // XBEL_H
+#endif // PRINTTOPDFDIALOG_H

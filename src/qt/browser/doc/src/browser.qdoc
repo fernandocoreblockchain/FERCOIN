@@ -10,32 +10,31 @@
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and Digia.  For licensing terms and
-** conditions see http://qt.digia.com/licensing.  For further information
-** use the contact form at http://qt.digia.com/contact-us.
+** a written agreement between you and The Qt Company. For licensing terms
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Free Documentation License Usage
 ** Alternatively, this file may be used under the terms of the GNU Free
 ** Documentation License version 1.3 as published by the Free Software
 ** Foundation and appearing in the file included in the packaging of
-** this file.  Please review the following information to ensure
+** this file. Please review the following information to ensure
 ** the GNU Free Documentation License version 1.3 requirements
-** will be met: http://www.gnu.org/copyleft/fdl.html.
+** will be met: https://www.gnu.org/licenses/fdl-1.3.html.
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
 
 /*!
-    \example webkitwidgets/browser
-    \title Tab Browser
-    \brief Demonstrates a complete web browsing experience
-    \ingroup webkit-widgetexamples
+    \example webenginewidgets/demobrowser
+    \title WebEngine Demo Browser Example
+    \ingroup webengine-widgetexamples
+    \brief A demo browser based on Qt WebEngine Widgets
 
-    The Tab Browser example shows \l{Qt WebKit} module in action,
-    providing a little Web browser application with support for tabs.
+    \e {Demo Browser} demonstrates how to use the \l{Qt WebEngine Widgets C++ Classes}
+    {Qt WebEngine C++ classes} to develop a small Web browser application with support for tabs.
 
     \image browser-demo.png
 
-    This browser is the foundation for the \l{Arora Browser}, a simple cross-platform
-    Web browser.
+    \include examples-run.qdocinc
 */

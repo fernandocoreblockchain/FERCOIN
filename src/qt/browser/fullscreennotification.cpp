@@ -48,73 +48,74 @@
 **
 ****************************************************************************/
 
-#ifndef XBEL_H
-#define XBEL_H
+#include "fullscreennotification.h"
 
-#include <QtCore/QXmlStreamReader>
-#include <QtCore/QDateTime>
+#include <QApplication>
+#include <QDesktopWidget>
+#include <QGridLayout>
+#include <QLabel>
+#include <QPropertyAnimation>
+#include <QTimer>
 
-class BookmarkNode
+FullScreenNotification::FullScreenNotification(QWidget *parent)
+    : QWidget(parent)
+    , width(400)
+    , height(80)
+    , x((parent->geometry().width() - width) / 2)
+    , y(80)
 {
-public:
-    enum Type {
-        Root,
-        Folder,
-        Bookmark,
-        Separator
-    };
+    setVisible(false);
+    setWindowFlags(Qt::ToolTip | Qt::WindowDoesNotAcceptFocus);
 
-    BookmarkNode(Type type = Root, BookmarkNode *parent = 0);
-    ~BookmarkNode();
-    bool operator==(const BookmarkNode &other);
+    QGridLayout *layout = new QGridLayout(this);
 
-    Type type() const;
-    void setType(Type type);
-    QList<BookmarkNode *> children() const;
-    BookmarkNode *parent() const;
+    m_label = new QLabel(tr("You are now in fullscreen mode. Press ESC to quit!"), this);
+    layout->addWidget(m_label, 0, 0, 0, 0, Qt::AlignHCenter | Qt::AlignVCenter);
 
-    void add(BookmarkNode *child, int offset = -1);
-    void remove(BookmarkNode *child);
+    setGeometry(x, y, width, height);
 
-    QString url;
-    QString title;
-    QString desc;
-    bool expanded;
+    setStyleSheet("background-color: white;\
+        color: black;");
 
-private:
-    BookmarkNode *m_parent;
-    Type m_type;
-    QList<BookmarkNode *> m_children;
+    m_animation = new QPropertyAnimation(this, "windowOpacity");
+    connect(m_animation, SIGNAL(finished()), this, SLOT(fadeOutFinished()));
+}
 
-};
-
-class XbelReader : public QXmlStreamReader
+FullScreenNotification::~FullScreenNotification()
 {
-public:
-    XbelReader();
-    BookmarkNode *read(const QString &fileName);
-    BookmarkNode *read(QIODevice *device);
+}
 
-private:
-    void readXBEL(BookmarkNode *parent);
-    void readTitle(BookmarkNode *parent);
-    void readDescription(BookmarkNode *parent);
-    void readSeparator(BookmarkNode *parent);
-    void readFolder(BookmarkNode *parent);
-    void readBookmarkNode(BookmarkNode *parent);
-};
-
-#include <QtCore/QXmlStreamWriter>
-
-class XbelWriter : public QXmlStreamWriter
+void FullScreenNotification::show()
 {
-public:
-    XbelWriter();
-    bool write(const QString &fileName, const BookmarkNode *root);
-    bool write(QIODevice *device, const BookmarkNode *root);
+    setWindowOpacity(1.0);
+    QTimer::singleShot(300, [&] {
+        QWidget *parent = parentWidget();
+        x = (parent->geometry().width() - width) / 2;
+        QPoint topLeft = parent->mapToGlobal(QPoint(x, y));
+        QWidget::move(topLeft.x(), topLeft.y());
+        QWidget::show();
+        QWidget::raise();
+    });
+    QTimer::singleShot(5000, this, SLOT(fadeOut()));
+}
 
-private:
-    void writeItem(const BookmarkNode *parent);
-};
+void FullScreenNotification::hide()
+{
+    QWidget::hide();
+    m_animation->stop();
+}
 
-#endif // XBEL_H
+void FullScreenNotification::fadeOut()
+{
+    m_animation->setDuration(800);
+    m_animation->setStartValue(1.0);
+    m_animation->setEndValue(0.0);
+    m_animation->setEasingCurve(QEasingCurve::OutQuad);
+    m_animation->start();
+}
+
+void FullScreenNotification::fadeOutFinished()
+{
+    hide();
+    setWindowOpacity(1.0);
+}

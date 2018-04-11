@@ -48,73 +48,43 @@
 **
 ****************************************************************************/
 
-#ifndef XBEL_H
-#define XBEL_H
+#ifndef SAVEPAGEDIALOG_H
+#define SAVEPAGEDIALOG_H
 
-#include <QtCore/QXmlStreamReader>
-#include <QtCore/QDateTime>
+#include <QtWidgets/QDialog>
+#include <QtWebEngineWidgets/QWebEngineDownloadItem>
 
-class BookmarkNode
+QT_BEGIN_NAMESPACE
+namespace Ui {
+class SavePageDialog;
+}
+QT_END_NAMESPACE
+
+class SavePageDialog : public QDialog
 {
+    Q_OBJECT
+
 public:
-    enum Type {
-        Root,
-        Folder,
-        Bookmark,
-        Separator
-    };
+    explicit SavePageDialog(QWidget *parent, QWebEngineDownloadItem::SavePageFormat format,
+                            const QString &filePath);
+    ~SavePageDialog();
 
-    BookmarkNode(Type type = Root, BookmarkNode *parent = 0);
-    ~BookmarkNode();
-    bool operator==(const BookmarkNode &other);
+    QWebEngineDownloadItem::SavePageFormat pageFormat() const;
+    QString filePath() const;
 
-    Type type() const;
-    void setType(Type type);
-    QList<BookmarkNode *> children() const;
-    BookmarkNode *parent() const;
-
-    void add(BookmarkNode *child, int offset = -1);
-    void remove(BookmarkNode *child);
-
-    QString url;
-    QString title;
-    QString desc;
-    bool expanded;
+private slots:
+    void on_chooseFilePathButton_clicked();
+    void on_formatComboBox_currentIndexChanged(int idx);
 
 private:
-    BookmarkNode *m_parent;
-    Type m_type;
-    QList<BookmarkNode *> m_children;
+    static int formatToIndex(QWebEngineDownloadItem::SavePageFormat format);
+    static QWebEngineDownloadItem::SavePageFormat indexToFormat(int idx);
+    static QString suffixOfFormat(QWebEngineDownloadItem::SavePageFormat format);
+    void setFilePath(const QString &filePath);
+    void ensureFileSuffix(QWebEngineDownloadItem::SavePageFormat format);
 
+    static const QWebEngineDownloadItem::SavePageFormat m_indexToFormatTable[];
+    Ui::SavePageDialog *ui;
 };
 
-class XbelReader : public QXmlStreamReader
-{
-public:
-    XbelReader();
-    BookmarkNode *read(const QString &fileName);
-    BookmarkNode *read(QIODevice *device);
-
-private:
-    void readXBEL(BookmarkNode *parent);
-    void readTitle(BookmarkNode *parent);
-    void readDescription(BookmarkNode *parent);
-    void readSeparator(BookmarkNode *parent);
-    void readFolder(BookmarkNode *parent);
-    void readBookmarkNode(BookmarkNode *parent);
-};
-
-#include <QtCore/QXmlStreamWriter>
-
-class XbelWriter : public QXmlStreamWriter
-{
-public:
-    XbelWriter();
-    bool write(const QString &fileName, const BookmarkNode *root);
-    bool write(QIODevice *device, const BookmarkNode *root);
-
-private:
-    void writeItem(const BookmarkNode *parent);
-};
-
-#endif // XBEL_H
+#endif // SAVEPAGEDIALOG_H

@@ -1,39 +1,48 @@
 /****************************************************************************
 **
-** Copyright (C) 2013 Digia Plc and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/legal
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
-** This file is part of the demonstration applications of the Qt Toolkit.
+** This file is part of the examples of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL$
+** $QT_BEGIN_LICENSE:BSD$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and Digia.  For licensing terms and
-** conditions see http://qt.digia.com/licensing.  For further information
-** use the contact form at http://qt.digia.com/contact-us.
+** a written agreement between you and The Qt Company. For licensing terms
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** BSD License Usage
+** Alternatively, you may use this file under the terms of the BSD license
+** as follows:
 **
-** In addition, as a special exception, Digia gives you certain additional
-** rights.  These rights are described in the Digia Qt LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** "Redistribution and use in source and binary forms, with or without
+** modification, are permitted provided that the following conditions are
+** met:
+**   * Redistributions of source code must retain the above copyright
+**     notice, this list of conditions and the following disclaimer.
+**   * Redistributions in binary form must reproduce the above copyright
+**     notice, this list of conditions and the following disclaimer in
+**     the documentation and/or other materials provided with the
+**     distribution.
+**   * Neither the name of The Qt Company Ltd nor the names of its
+**     contributors may be used to endorse or promote products derived
+**     from this software without specific prior written permission.
 **
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3.0 as published by the Free Software
-** Foundation and appearing in the file LICENSE.GPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU General Public License version 3.0 requirements will be
-** met: http://www.gnu.org/copyleft/gpl.html.
 **
+** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+** "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+** LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+** A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+** OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+** SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+** LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+** OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
 **
 ** $QT_END_LICENSE$
 **
@@ -42,9 +51,16 @@
 #ifndef TABWIDGET_H
 #define TABWIDGET_H
 
+#include <QtWebEngineWidgets/QWebEngineFullScreenRequest>
 #include <QtWidgets/QTabBar>
-
 #include <QtWidgets/QShortcut>
+
+QT_BEGIN_NAMESPACE
+class QWebEngineDownloadItem;
+class QWebEngineProfile;
+class QWebEngineView;
+QT_END_NAMESPACE
+
 /*
     Tab bar with a few more features such as a context menu and shortcuts
  */
@@ -52,12 +68,13 @@ class TabBar : public QTabBar
 {
     Q_OBJECT
 
-Q_SIGNALS:
+signals:
     void newTab();
     void cloneTab(int index);
     void closeTab(int index);
     void closeOtherTabs(int index);
     void reloadTab(int index);
+    void muteTab(int index, bool mute);
     void reloadAllTabs();
     void tabMoveRequested(int fromIndex, int toIndex);
 
@@ -68,12 +85,14 @@ protected:
     void mousePressEvent(QMouseEvent* event);
     void mouseMoveEvent(QMouseEvent* event);
 
-private Q_SLOTS:
+private slots:
     void selectTabAction();
     void cloneTab();
     void closeTab();
     void closeOtherTabs();
     void reloadTab();
+    void muteTab();
+    void unmuteTab();
     void contextMenuRequested(const QPoint &position);
 
 private:
@@ -84,7 +103,7 @@ private:
     int m_dragCurrentIndex;
 };
 
-#include <QtWebKitWidgets/QWebPage>
+#include <QWebEnginePage>
 
 QT_BEGIN_NAMESPACE
 class QAction;
@@ -102,31 +121,35 @@ class WebActionMapper : public QObject
     Q_OBJECT
 
 public:
-    WebActionMapper(QAction *root, QWebPage::WebAction webAction, QObject *parent);
-    QWebPage::WebAction webAction() const;
+    WebActionMapper(QAction *root, QWebEnginePage::WebAction webAction, QObject *parent);
+    QWebEnginePage::WebAction webAction() const;
     void addChild(QAction *action);
-    void updateCurrent(QWebPage *currentParent);
+    void updateCurrent(QWebEnginePage *currentParent);
 
-private Q_SLOTS:
+private slots:
     void rootTriggered();
     void childChanged();
     void rootDestroyed();
     void currentDestroyed();
 
 private:
-    QWebPage *m_currentParent;
+    QWebEnginePage *m_currentParent;
     QAction *m_root;
-    QWebPage::WebAction m_webAction;
+    QWebEnginePage::WebAction m_webAction;
 };
 
 #include <QtCore/QUrl>
 #include <QtWidgets/QTabWidget>
+
+class FullScreenNotification;
+
 QT_BEGIN_NAMESPACE
 class QCompleter;
 class QLineEdit;
 class QMenu;
 class QStackedWidget;
 QT_END_NAMESPACE
+
 /*!
     TabWidget that contains WebViews and a stack widget of associated line edits.
 
@@ -137,7 +160,7 @@ class TabWidget : public QTabWidget
 {
     Q_OBJECT
 
-Q_SIGNALS:
+signals:
     // tab widget signals
     void loadPage(const QString &url);
     void tabsChanged();
@@ -152,12 +175,15 @@ Q_SIGNALS:
     void menuBarVisibilityChangeRequested(bool visible);
     void statusBarVisibilityChangeRequested(bool visible);
     void toolBarVisibilityChangeRequested(bool visible);
-    void printRequested(QWebFrame *frame);
+#if defined(QWEBENGINEPAGE_PRINTREQUESTED)
+    void printRequested(QWebEngineFrame *frame);
+#endif
 
 public:
     TabWidget(QWidget *parent = 0);
+    ~TabWidget();
     void clear();
-    void addWebAction(QAction *action, QWebPage::WebAction webAction);
+    void addWebAction(QAction *action, QWebEnginePage::WebAction webAction);
 
     QAction *newTabAction() const;
     QAction *closeTabAction() const;
@@ -175,35 +201,45 @@ public:
     QByteArray saveState() const;
     bool restoreState(const QByteArray &state);
 
+    void setProfile(QWebEngineProfile *profile);
+
 protected:
     void mouseDoubleClickEvent(QMouseEvent *event);
     void contextMenuEvent(QContextMenuEvent *event);
     void mouseReleaseEvent(QMouseEvent *event);
 
-public Q_SLOTS:
+public slots:
     void loadUrlInCurrentTab(const QUrl &url);
     WebView *newTab(bool makeCurrent = true);
     void cloneTab(int index = -1);
-    void closeTab(int index = -1);
+    void requestCloseTab(int index = -1);
+    void closeTab(int index);
     void closeOtherTabs(int index);
     void reloadTab(int index = -1);
     void reloadAllTabs();
     void nextTab();
     void previousTab();
+    void setAudioMutedForTab(int index, bool mute);
 
-private Q_SLOTS:
+private slots:
     void currentChanged(int index);
     void aboutToShowRecentTabsMenu();
     void aboutToShowRecentTriggeredAction(QAction *action);
+    void downloadRequested(QWebEngineDownloadItem *download);
     void webViewLoadStarted();
-    void webViewIconChanged();
+    void webViewIconChanged(const QIcon &icon);
     void webViewTitleChanged(const QString &title);
     void webViewUrlChanged(const QUrl &url);
     void lineEditReturnPressed();
     void windowCloseRequested();
     void moveTab(int fromIndex, int toIndex);
+    void fullScreenRequested(QWebEngineFullScreenRequest request);
+    void handleTabBarDoubleClicked(int index);
+    void webPageMutedOrAudibleChanged();
 
 private:
+    void setupPage(QWebEnginePage* page);
+
     QAction *m_recentlyClosedTabsAction;
     QAction *m_newTabAction;
     QAction *m_closeTabAction;
@@ -218,7 +254,10 @@ private:
     QCompleter *m_lineEditCompleter;
     QStackedWidget *m_lineEdits;
     TabBar *m_tabBar;
+    QWebEngineProfile *m_profile;
+    QWebEngineView *m_fullScreenView;
+    FullScreenNotification *m_fullScreenNotification;
+    QRect m_oldWindowGeometry;
 };
 
 #endif // TABWIDGET_H
-

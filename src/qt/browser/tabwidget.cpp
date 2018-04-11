@@ -1,39 +1,48 @@
 /****************************************************************************
 **
-** Copyright (C) 2013 Digia Plc and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/legal
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
-** This file is part of the demonstration applications of the Qt Toolkit.
+** This file is part of the examples of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL$
+** $QT_BEGIN_LICENSE:BSD$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and Digia.  For licensing terms and
-** conditions see http://qt.digia.com/licensing.  For further information
-** use the contact form at http://qt.digia.com/contact-us.
+** a written agreement between you and The Qt Company. For licensing terms
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** BSD License Usage
+** Alternatively, you may use this file under the terms of the BSD license
+** as follows:
 **
-** In addition, as a special exception, Digia gives you certain additional
-** rights.  These rights are described in the Digia Qt LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** "Redistribution and use in source and binary forms, with or without
+** modification, are permitted provided that the following conditions are
+** met:
+**   * Redistributions of source code must retain the above copyright
+**     notice, this list of conditions and the following disclaimer.
+**   * Redistributions in binary form must reproduce the above copyright
+**     notice, this list of conditions and the following disclaimer in
+**     the documentation and/or other materials provided with the
+**     distribution.
+**   * Neither the name of The Qt Company Ltd nor the names of its
+**     contributors may be used to endorse or promote products derived
+**     from this software without specific prior written permission.
 **
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3.0 as published by the Free Software
-** Foundation and appearing in the file LICENSE.GPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU General Public License version 3.0 requirements will be
-** met: http://www.gnu.org/copyleft/gpl.html.
 **
+** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+** "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+** LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+** A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+** OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+** SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+** LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+** OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
 **
 ** $QT_END_LICENSE$
 **
@@ -43,10 +52,16 @@
 
 #include "browserapplication.h"
 #include "browsermainwindow.h"
+#include "downloadmanager.h"
+#include "fullscreennotification.h"
 #include "history.h"
+#include "savepagedialog.h"
 #include "urllineedit.h"
 #include "webview.h"
 
+#include <QWebEngineDownloadItem>
+#include <QWebEngineProfile>
+#include <QWebEngineFullScreenRequest>
 #include <QtCore/QMimeData>
 #include <QtGui/QClipboard>
 #include <QtWidgets/QCompleter>
@@ -70,11 +85,8 @@ TabBar::TabBar(QWidget *parent)
             this, SLOT(contextMenuRequested(QPoint)));
 
     QString ctrl = QLatin1String("Ctrl+%1");
-    for (int i = 1; i <= 10; ++i) {
-        int key = i;
-        if (key == 10)
-            key = 0;
-        QShortcut *shortCut = new QShortcut(ctrl.arg(key), this);
+    for (int i = 1; i < 10; ++i) {
+        QShortcut *shortCut = new QShortcut(ctrl.arg(i), this);
         m_tabShortcuts.append(shortCut);
         connect(shortCut, SIGNAL(activated()), this, SLOT(selectTabAction()));
     }
@@ -89,8 +101,6 @@ void TabBar::selectTabAction()
 {
     if (QShortcut *shortCut = qobject_cast<QShortcut*>(sender())) {
         int index = m_tabShortcuts.indexOf(shortCut);
-        if (index == 0)
-            index = 10;
         setCurrentIndex(index);
     }
 }
@@ -120,6 +130,15 @@ void TabBar::contextMenuRequested(const QPoint &position)
         action = menu.addAction(tr("Reload Tab"),
                 this, SLOT(reloadTab()), QKeySequence::Refresh);
         action->setData(index);
+
+        // Audio mute / unmute.
+        action = menu.addAction(tr("Mute tab"),
+                this, SLOT(muteTab()));
+        action->setData(index);
+
+        action = menu.addAction(tr("Unmute tab"),
+                this, SLOT(unmuteTab()));
+        action->setData(index);
     } else {
         menu.addSeparator();
     }
@@ -131,7 +150,7 @@ void TabBar::cloneTab()
 {
     if (QAction *action = qobject_cast<QAction*>(sender())) {
         int index = action->data().toInt();
-        Q_EMIT cloneTab(index);
+        emit cloneTab(index);
     }
 }
 
@@ -139,7 +158,7 @@ void TabBar::closeTab()
 {
     if (QAction *action = qobject_cast<QAction*>(sender())) {
         int index = action->data().toInt();
-        Q_EMIT closeTab(index);
+        emit closeTab(index);
     }
 }
 
@@ -147,7 +166,7 @@ void TabBar::closeOtherTabs()
 {
     if (QAction *action = qobject_cast<QAction*>(sender())) {
         int index = action->data().toInt();
-        Q_EMIT closeOtherTabs(index);
+        emit closeOtherTabs(index);
     }
 }
 
@@ -155,7 +174,17 @@ void TabBar::mousePressEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::LeftButton)
         m_dragStartPos = event->pos();
+
     QTabBar::mousePressEvent(event);
+
+    // Middle click on tab should close it.
+    if (event->button() == Qt::MiddleButton) {
+        const QPoint pos = event->pos();
+        int index = tabAt(pos);
+        if (index != -1) {
+            emit closeTab(index);
+        }
+    }
 }
 
 void TabBar::mouseMoveEvent(QMouseEvent *event)
@@ -199,7 +228,23 @@ void TabBar::reloadTab()
 {
     if (QAction *action = qobject_cast<QAction*>(sender())) {
         int index = action->data().toInt();
-        Q_EMIT reloadTab(index);
+        emit reloadTab(index);
+    }
+}
+
+void TabBar::muteTab()
+{
+    if (QAction *action = qobject_cast<QAction*>(sender())) {
+        int index = action->data().toInt();
+        emit muteTab(index, true);
+    }
+}
+
+void TabBar::unmuteTab()
+{
+    if (QAction *action = qobject_cast<QAction*>(sender())) {
+        int index = action->data().toInt();
+        emit muteTab(index, false);
     }
 }
 
@@ -214,16 +259,21 @@ TabWidget::TabWidget(QWidget *parent)
     , m_lineEditCompleter(0)
     , m_lineEdits(0)
     , m_tabBar(new TabBar(this))
+    , m_profile(QWebEngineProfile::defaultProfile())
+    , m_fullScreenView(0)
+    , m_fullScreenNotification(0)
 {
     setElideMode(Qt::ElideRight);
 
     connect(m_tabBar, SIGNAL(newTab()), this, SLOT(newTab()));
-    connect(m_tabBar, SIGNAL(closeTab(int)), this, SLOT(closeTab(int)));
+    connect(m_tabBar, SIGNAL(closeTab(int)), this, SLOT(requestCloseTab(int)));
     connect(m_tabBar, SIGNAL(cloneTab(int)), this, SLOT(cloneTab(int)));
     connect(m_tabBar, SIGNAL(closeOtherTabs(int)), this, SLOT(closeOtherTabs(int)));
     connect(m_tabBar, SIGNAL(reloadTab(int)), this, SLOT(reloadTab(int)));
     connect(m_tabBar, SIGNAL(reloadAllTabs()), this, SLOT(reloadAllTabs()));
     connect(m_tabBar, SIGNAL(tabMoved(int,int)), this, SLOT(moveTab(int,int)));
+    connect(m_tabBar, SIGNAL(tabBarDoubleClicked(int)), this, SLOT(handleTabBarDoubleClicked(int)));
+    connect(m_tabBar, SIGNAL(muteTab(int,bool)), this, SLOT(setAudioMutedForTab(int,bool)));
     setTabBar(m_tabBar);
     setDocumentMode(true);
 
@@ -236,7 +286,7 @@ TabWidget::TabWidget(QWidget *parent)
     m_closeTabAction = new QAction(QIcon(QLatin1String(":closetab.png")), tr("&Close Tab"), this);
     m_closeTabAction->setShortcuts(QKeySequence::Close);
     m_closeTabAction->setIconVisibleInMenu(false);
-    connect(m_closeTabAction, SIGNAL(triggered()), this, SLOT(closeTab()));
+    connect(m_closeTabAction, SIGNAL(triggered()), this, SLOT(requestCloseTab()));
 
     m_nextTabAction = new QAction(tr("Show Next Tab"), this);
     QList<QKeySequence> shortcuts;
@@ -271,6 +321,12 @@ TabWidget::TabWidget(QWidget *parent)
     m_lineEdits = new QStackedWidget(this);
 }
 
+TabWidget::~TabWidget()
+{
+    if (m_fullScreenView)
+        delete m_fullScreenView;
+}
+
 void TabWidget::clear()
 {
     // clear the recently closed tabs
@@ -289,7 +345,19 @@ void TabWidget::moveTab(int fromIndex, int toIndex)
     m_lineEdits->insertWidget(toIndex, lineEdit);
 }
 
-void TabWidget::addWebAction(QAction *action, QWebPage::WebAction webAction)
+void TabWidget::setAudioMutedForTab(int index, bool mute)
+{
+    if (index < 0)
+        index = currentIndex();
+    if (index < 0 || index >= count())
+        return;
+
+    QWidget *widget = this->widget(index);
+    if (WebView *tab = qobject_cast<WebView*>(widget))
+        tab->page()->setAudioMuted(mute);
+}
+
+void TabWidget::addWebAction(QAction *action, QWebEnginePage::WebAction webAction)
 {
     if (!action)
         return;
@@ -306,33 +374,86 @@ void TabWidget::currentChanged(int index)
 
     WebView *oldWebView = this->webView(m_lineEdits->currentIndex());
     if (oldWebView) {
+#if defined(QWEBENGINEVIEW_STATUSBARMESSAGE)
         disconnect(oldWebView, SIGNAL(statusBarMessage(QString)),
                 this, SIGNAL(showStatusBarMessage(QString)));
-        disconnect(oldWebView->page(), SIGNAL(linkHovered(QString,QString,QString)),
-                this, SIGNAL(linkHovered(QString)));
+#endif
+        disconnect(oldWebView->page(), SIGNAL(linkHovered(const QString&)),
+                this, SIGNAL(linkHovered(const QString&)));
         disconnect(oldWebView, SIGNAL(loadProgress(int)),
                 this, SIGNAL(loadProgress(int)));
+        disconnect(oldWebView->page()->profile(), SIGNAL(downloadRequested(QWebEngineDownloadItem*)),
+                this, SLOT(downloadRequested(QWebEngineDownloadItem*)));
+        disconnect(oldWebView->page(), SIGNAL(fullScreenRequested(QWebEngineFullScreenRequest)),
+                this, SLOT(fullScreenRequested(QWebEngineFullScreenRequest)));
     }
 
+#if defined(QWEBENGINEVIEW_STATUSBARMESSAGE)
     connect(webView, SIGNAL(statusBarMessage(QString)),
             this, SIGNAL(showStatusBarMessage(QString)));
-    connect(webView->page(), SIGNAL(linkHovered(QString,QString,QString)),
-            this, SIGNAL(linkHovered(QString)));
+#endif
+    connect(webView->page(), SIGNAL(linkHovered(const QString&)),
+            this, SIGNAL(linkHovered(const QString&)));
     connect(webView, SIGNAL(loadProgress(int)),
             this, SIGNAL(loadProgress(int)));
+    connect(webView->page()->profile(), SIGNAL(downloadRequested(QWebEngineDownloadItem*)),
+            this, SLOT(downloadRequested(QWebEngineDownloadItem*)));
+    connect(webView->page(), SIGNAL(fullScreenRequested(QWebEngineFullScreenRequest)),
+            this, SLOT(fullScreenRequested(QWebEngineFullScreenRequest)));
 
     for (int i = 0; i < m_actions.count(); ++i) {
         WebActionMapper *mapper = m_actions[i];
         mapper->updateCurrent(webView->page());
     }
-    Q_EMIT setCurrentTitle(webView->title());
+    emit setCurrentTitle(webView->title());
     m_lineEdits->setCurrentIndex(index);
-    Q_EMIT loadProgress(webView->progress());
-    Q_EMIT showStatusBarMessage(webView->lastStatusBarText());
+    emit loadProgress(webView->progress());
+    emit showStatusBarMessage(webView->lastStatusBarText());
     if (webView->url().isEmpty())
         m_lineEdits->currentWidget()->setFocus();
     else
         webView->setFocus();
+}
+
+void TabWidget::fullScreenRequested(QWebEngineFullScreenRequest request)
+{
+    WebPage *webPage = qobject_cast<WebPage*>(sender());
+    if (request.toggleOn()) {
+        if (!m_fullScreenView) {
+            m_fullScreenView = new QWebEngineView();
+            m_fullScreenNotification = new FullScreenNotification(m_fullScreenView);
+
+            QAction *exitFullScreenAction = new QAction(m_fullScreenView);
+            exitFullScreenAction->setShortcut(Qt::Key_Escape);
+            connect(exitFullScreenAction, &QAction::triggered, [webPage] {
+                webPage->triggerAction(QWebEnginePage::ExitFullScreen);
+            });
+            m_fullScreenView->addAction(exitFullScreenAction);
+        }
+        m_oldWindowGeometry = window()->geometry();
+        m_fullScreenView->setGeometry(m_oldWindowGeometry);
+        webPage->setView(m_fullScreenView);
+        request.accept();
+        m_fullScreenView->showFullScreen();
+        m_fullScreenNotification->show();
+        window()->hide();
+    } else {
+        if (!m_fullScreenView)
+            return;
+        WebView *oldWebView = this->webView(m_lineEdits->currentIndex());
+        webPage->setView(oldWebView);
+        request.accept();
+        delete m_fullScreenView;
+        m_fullScreenView = 0;
+        window()->show();
+        window()->setGeometry(m_oldWindowGeometry);
+    }
+}
+
+void TabWidget::handleTabBarDoubleClicked(int index)
+{
+    if (index != -1) return;
+    newTab();
 }
 
 QAction *TabWidget::newTabAction() const
@@ -408,6 +529,36 @@ int TabWidget::webViewIndex(WebView *webView) const
     return index;
 }
 
+void TabWidget::setupPage(QWebEnginePage* page)
+{
+    connect(page, SIGNAL(windowCloseRequested()),
+            this, SLOT(windowCloseRequested()));
+    connect(page, SIGNAL(geometryChangeRequested(QRect)),
+            this, SIGNAL(geometryChangeRequested(QRect)));
+#if defined(QWEBENGINEPAGE_PRINTREQUESTED)
+    connect(page, SIGNAL(printRequested(QWebEngineFrame*)),
+            this, SIGNAL(printRequested(QWebEngineFrame*)));
+#endif
+#if defined(QWEBENGINEPAGE_MENUBARVISIBILITYCHANGEREQUESTED)
+    connect(page, SIGNAL(menuBarVisibilityChangeRequested(bool)),
+            this, SIGNAL(menuBarVisibilityChangeRequested(bool)));
+#endif
+#if defined(QWEBENGINEPAGE_STATUSBARVISIBILITYCHANGEREQUESTED)
+    connect(page, SIGNAL(statusBarVisibilityChangeRequested(bool)),
+            this, SIGNAL(statusBarVisibilityChangeRequested(bool)));
+#endif
+#if defined(QWEBENGINEPAGE_TOOLBARVISIBILITYCHANGEREQUESTED)
+    connect(page, SIGNAL(toolBarVisibilityChangeRequested(bool)),
+            this, SIGNAL(toolBarVisibilityChangeRequested(bool)));
+#endif
+
+    // webview actions
+    for (int i = 0; i < m_actions.count(); ++i) {
+        WebActionMapper *mapper = m_actions[i];
+        mapper->addChild(page->action(mapper->webAction()));
+    }
+}
+
 WebView *TabWidget::newTab(bool makeCurrent)
 {
     // line edit
@@ -445,42 +596,31 @@ WebView *TabWidget::newTab(bool makeCurrent)
 
     // webview
     WebView *webView = new WebView;
+    webView->setPage(new WebPage(m_profile, webView));
     urlLineEdit->setWebView(webView);
     connect(webView, SIGNAL(loadStarted()),
             this, SLOT(webViewLoadStarted()));
-    connect(webView, SIGNAL(loadFinished(bool)),
-            this, SLOT(webViewIconChanged()));
-    connect(webView, SIGNAL(iconChanged()),
-            this, SLOT(webViewIconChanged()));
+    connect(webView, SIGNAL(iconChanged(QIcon)),
+            this, SLOT(webViewIconChanged(QIcon)));
     connect(webView, SIGNAL(titleChanged(QString)),
             this, SLOT(webViewTitleChanged(QString)));
+    connect(webView->page(), SIGNAL(audioMutedChanged(bool)),
+            this, SLOT(webPageMutedOrAudibleChanged()));
+    connect(webView->page(), SIGNAL(recentlyAudibleChanged(bool)),
+            this, SLOT(webPageMutedOrAudibleChanged()));
     connect(webView, SIGNAL(urlChanged(QUrl)),
             this, SLOT(webViewUrlChanged(QUrl)));
-    connect(webView->page(), SIGNAL(windowCloseRequested()),
-            this, SLOT(windowCloseRequested()));
-    connect(webView->page(), SIGNAL(geometryChangeRequested(QRect)),
-            this, SIGNAL(geometryChangeRequested(QRect)));
-    connect(webView->page(), SIGNAL(printRequested(QWebFrame*)),
-            this, SIGNAL(printRequested(QWebFrame*)));
-    connect(webView->page(), SIGNAL(menuBarVisibilityChangeRequested(bool)),
-            this, SIGNAL(menuBarVisibilityChangeRequested(bool)));
-    connect(webView->page(), SIGNAL(statusBarVisibilityChangeRequested(bool)),
-            this, SIGNAL(statusBarVisibilityChangeRequested(bool)));
-    connect(webView->page(), SIGNAL(toolBarVisibilityChangeRequested(bool)),
-            this, SIGNAL(toolBarVisibilityChangeRequested(bool)));
+
+
     addTab(webView, tr("(Untitled)"));
     if (makeCurrent)
         setCurrentWidget(webView);
 
-    // webview actions
-    for (int i = 0; i < m_actions.count(); ++i) {
-        WebActionMapper *mapper = m_actions[i];
-        mapper->addChild(webView->page()->action(mapper->webAction()));
-    }
+    setupPage(webView->page());
 
     if (count() == 1)
         currentChanged(currentIndex());
-    Q_EMIT tabsChanged();
+    emit tabsChanged();
     return webView;
 }
 
@@ -497,7 +637,7 @@ void TabWidget::reloadAllTabs()
 void TabWidget::lineEditReturnPressed()
 {
     if (QLineEdit *lineEdit = qobject_cast<QLineEdit*>(sender())) {
-        Q_EMIT loadPage(lineEdit->text());
+        emit loadPage(lineEdit->text());
         if (m_lineEdits->currentWidget() == lineEdit)
             currentWebView()->setFocus();
     }
@@ -508,12 +648,8 @@ void TabWidget::windowCloseRequested()
     WebPage *webPage = qobject_cast<WebPage*>(sender());
     WebView *webView = qobject_cast<WebView*>(webPage->view());
     int index = webViewIndex(webView);
-    if (index >= 0) {
-        if (count() == 1)
-            webView->webPage()->mainWindow()->close();
-        else
-            closeTab(index);
-    }
+    if (index >= 0)
+        closeTab(index);
 }
 
 void TabWidget::closeOtherTabs(int index)
@@ -538,32 +674,28 @@ void TabWidget::cloneTab(int index)
 }
 
 // When index is -1 index chooses the current tab
-void TabWidget::closeTab(int index)
+void TabWidget::requestCloseTab(int index)
 {
     if (index < 0)
         index = currentIndex();
     if (index < 0 || index >= count())
         return;
+    WebView *tab = webView(index);
+    if (!tab)
+        return;
+    tab->page()->triggerAction(QWebEnginePage::RequestClose);
+}
+
+void TabWidget::closeTab(int index)
+{
+    if (index < 0 || index >= count())
+        return;
 
     bool hasFocus = false;
     if (WebView *tab = webView(index)) {
-        if (tab->isModified()) {
-            QMessageBox closeConfirmation(tab);
-            closeConfirmation.setWindowFlags(Qt::Sheet);
-            closeConfirmation.setWindowTitle(tr("Do you really want to close this page?"));
-            closeConfirmation.setInformativeText(tr("You have modified this page and when closing it you would lose the modification.\n"
-                                                     "Do you really want to close this page?\n"));
-            closeConfirmation.setIcon(QMessageBox::Question);
-            closeConfirmation.addButton(QMessageBox::Yes);
-            closeConfirmation.addButton(QMessageBox::No);
-            closeConfirmation.setEscapeButton(QMessageBox::No);
-            if (closeConfirmation.exec() == QMessageBox::No)
-                return;
-        }
         hasFocus = tab->hasFocus();
 
-        QWebSettings *globalSettings = QWebSettings::globalSettings();
-        if (!globalSettings->testAttribute(QWebSettings::PrivateBrowsingEnabled)) {
+        if (m_profile == QWebEngineProfile::defaultProfile()) {
             m_recentlyClosedTabsAction->setEnabled(true);
             m_recentlyClosedTabs.prepend(tab->url());
             if (m_recentlyClosedTabs.size() >= TabWidget::m_recentlyClosedTabsSize)
@@ -576,11 +708,25 @@ void TabWidget::closeTab(int index)
     QWidget *webView = widget(index);
     removeTab(index);
     webView->deleteLater();
-    Q_EMIT tabsChanged();
+    emit tabsChanged();
     if (hasFocus && count() > 0)
         currentWebView()->setFocus();
     if (count() == 0)
-        Q_EMIT lastTabClosed();
+        emit lastTabClosed();
+}
+
+void TabWidget::setProfile(QWebEngineProfile *profile)
+{
+    m_profile = profile;
+    for (int i = 0; i < count(); ++i) {
+        QWidget *tabWidget = widget(i);
+        if (WebView *tab = qobject_cast<WebView*>(tabWidget)) {
+            WebPage* webPage = new WebPage(m_profile, tab);
+            setupPage(webPage);
+            webPage->load(tab->page()->url());
+            tab->setPage(webPage);
+        }
+    }
 }
 
 void TabWidget::webViewLoadStarted()
@@ -593,14 +739,12 @@ void TabWidget::webViewLoadStarted()
     }
 }
 
-void TabWidget::webViewIconChanged()
+void TabWidget::webViewIconChanged(const QIcon &icon)
 {
     WebView *webView = qobject_cast<WebView*>(sender());
     int index = webViewIndex(webView);
-    if (-1 != index) {
-        QIcon icon = BrowserApplication::instance()->icon(webView->url());
+    if (-1 != index)
         setTabIcon(index, icon);
-    }
 }
 
 void TabWidget::webViewTitleChanged(const QString &title)
@@ -611,8 +755,25 @@ void TabWidget::webViewTitleChanged(const QString &title)
         setTabText(index, title);
     }
     if (currentIndex() == index)
-        Q_EMIT setCurrentTitle(title);
+        emit setCurrentTitle(title);
     BrowserApplication::historyManager()->updateHistoryItem(webView->url(), title);
+}
+
+void TabWidget::webPageMutedOrAudibleChanged() {
+    QWebEnginePage* webPage = qobject_cast<QWebEnginePage*>(sender());
+    WebView *webView = qobject_cast<WebView*>(webPage->view());
+
+    int index = webViewIndex(webView);
+    if (-1 != index) {
+        QString title = webView->title();
+
+        bool muted = webPage->isAudioMuted();
+        bool audible = webPage->recentlyAudible();
+        if (muted) title += tr(" (muted)");
+        else if (audible) title += tr(" (audible)");
+
+        setTabText(index, title);
+    }
 }
 
 void TabWidget::webViewUrlChanged(const QUrl &url)
@@ -621,8 +782,11 @@ void TabWidget::webViewUrlChanged(const QUrl &url)
     int index = webViewIndex(webView);
     if (-1 != index) {
         m_tabBar->setTabData(index, url);
+        HistoryManager *manager = BrowserApplication::historyManager();
+        if (url.isValid())
+            manager->addHistoryEntry(url.toString());
     }
-    Q_EMIT tabsChanged();
+    emit tabsChanged();
 }
 
 void TabWidget::aboutToShowRecentTabsMenu()
@@ -718,7 +882,7 @@ QByteArray TabWidget::saveState() const
         if (WebView *tab = qobject_cast<WebView*>(widget(i))) {
             tabs.append(tab->url().toString());
         } else {
-            tabs.append(QString::null);
+            tabs.append(QString());
         }
     }
     stream << tabs;
@@ -757,7 +921,21 @@ bool TabWidget::restoreState(const QByteArray &state)
     return true;
 }
 
-WebActionMapper::WebActionMapper(QAction *root, QWebPage::WebAction webAction, QObject *parent)
+void TabWidget::downloadRequested(QWebEngineDownloadItem *download)
+{
+    if (download->savePageFormat() != QWebEngineDownloadItem::UnknownSaveFormat) {
+        SavePageDialog dlg(this, download->savePageFormat(), download->path());
+        if (dlg.exec() != SavePageDialog::Accepted)
+            return;
+        download->setSavePageFormat(dlg.pageFormat());
+        download->setPath(dlg.filePath());
+    }
+
+    BrowserApplication::downloadManager()->download(download);
+    download->accept();
+}
+
+WebActionMapper::WebActionMapper(QAction *root, QWebEnginePage::WebAction webAction, QObject *parent)
     : QObject(parent)
     , m_currentParent(0)
     , m_root(root)
@@ -787,7 +965,7 @@ void WebActionMapper::addChild(QAction *action)
     connect(action, SIGNAL(changed()), this, SLOT(childChanged()));
 }
 
-QWebPage::WebAction WebActionMapper::webAction() const
+QWebEnginePage::WebAction WebActionMapper::webAction() const
 {
     return m_webAction;
 }
@@ -812,7 +990,7 @@ void WebActionMapper::childChanged()
     }
 }
 
-void WebActionMapper::updateCurrent(QWebPage *currentParent)
+void WebActionMapper::updateCurrent(QWebEnginePage *currentParent)
 {
     if (m_currentParent)
         disconnect(m_currentParent, SIGNAL(destroyed(QObject*)),
@@ -832,4 +1010,3 @@ void WebActionMapper::updateCurrent(QWebPage *currentParent)
     connect(m_currentParent, SIGNAL(destroyed(QObject*)),
             this, SLOT(currentDestroyed()));
 }
-

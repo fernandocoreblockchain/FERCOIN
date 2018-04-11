@@ -3,7 +3,7 @@
 ** Copyright (C) 2016 The Qt Company Ltd.
 ** Contact: https://www.qt.io/licensing/
 **
-** This file is part of the examples of the Qt Toolkit.
+** This file is part of the QtWebEngine module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:BSD$
 ** Commercial License Usage
@@ -48,73 +48,36 @@
 **
 ****************************************************************************/
 
-#ifndef XBEL_H
-#define XBEL_H
+#ifndef FEATUREPERMISSIONBAR_H
+#define FEATUREPERMISSIONBAR_H
 
-#include <QtCore/QXmlStreamReader>
-#include <QtCore/QDateTime>
+#include <QWidget>
+#include <QWebEnginePage>
 
-class BookmarkNode
-{
+QT_BEGIN_NAMESPACE
+class QLabel;
+class QPushButton;
+QT_END_NAMESPACE
+
+class FeaturePermissionBar : public QWidget {
+Q_OBJECT
+
 public:
-    enum Type {
-        Root,
-        Folder,
-        Bookmark,
-        Separator
-    };
+    FeaturePermissionBar(QWidget*);
+    void requestPermission(const QUrl &, QWebEnginePage::Feature feature);
 
-    BookmarkNode(Type type = Root, BookmarkNode *parent = 0);
-    ~BookmarkNode();
-    bool operator==(const BookmarkNode &other);
+signals:
+    void featurePermissionProvided(const QUrl &securityOrigin, QWebEnginePage::Feature, QWebEnginePage::PermissionPolicy);
 
-    Type type() const;
-    void setType(Type type);
-    QList<BookmarkNode *> children() const;
-    BookmarkNode *parent() const;
-
-    void add(BookmarkNode *child, int offset = -1);
-    void remove(BookmarkNode *child);
-
-    QString url;
-    QString title;
-    QString desc;
-    bool expanded;
+private slots:
+    void permissionDenied();
+    void permissionGranted();
+    void permissionUnknown();
 
 private:
-    BookmarkNode *m_parent;
-    Type m_type;
-    QList<BookmarkNode *> m_children;
-
+    QWebEnginePage::Feature m_feature;
+    QLabel *m_messageLabel;
+    QUrl m_securityOrigin;
 };
 
-class XbelReader : public QXmlStreamReader
-{
-public:
-    XbelReader();
-    BookmarkNode *read(const QString &fileName);
-    BookmarkNode *read(QIODevice *device);
-
-private:
-    void readXBEL(BookmarkNode *parent);
-    void readTitle(BookmarkNode *parent);
-    void readDescription(BookmarkNode *parent);
-    void readSeparator(BookmarkNode *parent);
-    void readFolder(BookmarkNode *parent);
-    void readBookmarkNode(BookmarkNode *parent);
-};
-
-#include <QtCore/QXmlStreamWriter>
-
-class XbelWriter : public QXmlStreamWriter
-{
-public:
-    XbelWriter();
-    bool write(const QString &fileName, const BookmarkNode *root);
-    bool write(QIODevice *device, const BookmarkNode *root);
-
-private:
-    void writeItem(const BookmarkNode *parent);
-};
-
-#endif // XBEL_H
+#endif // FEATUREPERMISSIONBAR_H

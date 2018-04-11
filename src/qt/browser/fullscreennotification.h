@@ -48,73 +48,39 @@
 **
 ****************************************************************************/
 
-#ifndef XBEL_H
-#define XBEL_H
+#ifndef FULLSCREENNOTIFICATION_H
+#define FULLSCREENNOTIFICATION_H
 
-#include <QtCore/QXmlStreamReader>
-#include <QtCore/QDateTime>
+#include <QWidget>
 
-class BookmarkNode
+QT_BEGIN_NAMESPACE
+class QLabel;
+class QGridLayout;
+class QPropertyAnimation;
+QT_END_NAMESPACE
+
+class FullScreenNotification : public QWidget
 {
+    Q_OBJECT
 public:
-    enum Type {
-        Root,
-        Folder,
-        Bookmark,
-        Separator
-    };
+    FullScreenNotification(QWidget *parent = 0);
+    ~FullScreenNotification();
 
-    BookmarkNode(Type type = Root, BookmarkNode *parent = 0);
-    ~BookmarkNode();
-    bool operator==(const BookmarkNode &other);
+    void show();
+    void hide();
 
-    Type type() const;
-    void setType(Type type);
-    QList<BookmarkNode *> children() const;
-    BookmarkNode *parent() const;
-
-    void add(BookmarkNode *child, int offset = -1);
-    void remove(BookmarkNode *child);
-
-    QString url;
-    QString title;
-    QString desc;
-    bool expanded;
+public slots:
+    void fadeOut();
+    void fadeOutFinished();
 
 private:
-    BookmarkNode *m_parent;
-    Type m_type;
-    QList<BookmarkNode *> m_children;
-
+    QLabel *m_label;
+    QGridLayout *m_layout;
+    QPropertyAnimation *m_animation;
+    int width;
+    int height;
+    int x;
+    int y;
 };
 
-class XbelReader : public QXmlStreamReader
-{
-public:
-    XbelReader();
-    BookmarkNode *read(const QString &fileName);
-    BookmarkNode *read(QIODevice *device);
-
-private:
-    void readXBEL(BookmarkNode *parent);
-    void readTitle(BookmarkNode *parent);
-    void readDescription(BookmarkNode *parent);
-    void readSeparator(BookmarkNode *parent);
-    void readFolder(BookmarkNode *parent);
-    void readBookmarkNode(BookmarkNode *parent);
-};
-
-#include <QtCore/QXmlStreamWriter>
-
-class XbelWriter : public QXmlStreamWriter
-{
-public:
-    XbelWriter();
-    bool write(const QString &fileName, const BookmarkNode *root);
-    bool write(QIODevice *device, const BookmarkNode *root);
-
-private:
-    void writeItem(const BookmarkNode *parent);
-};
-
-#endif // XBEL_H
+#endif // FULLSCREENNOTIFICATION_H

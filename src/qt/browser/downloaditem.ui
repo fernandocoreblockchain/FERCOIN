@@ -13,7 +13,16 @@
    <string>Form</string>
   </property>
   <layout class="QHBoxLayout" name="horizontalLayout" >
-   <property name="margin" >
+   <property name="leftMargin">
+    <number>5</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>5</number>
+   </property>
+   <property name="bottomMargin">
     <number>0</number>
    </property>
    <item>
@@ -80,16 +89,6 @@
         </size>
        </property>
       </spacer>
-     </item>
-     <item>
-      <widget class="QPushButton" name="tryAgainButton" >
-       <property name="enabled" >
-        <bool>false</bool>
-       </property>
-       <property name="text" >
-        <string>Try Again</string>
-       </property>
-      </widget>
      </item>
      <item>
       <widget class="QPushButton" name="stopButton" >

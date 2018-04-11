@@ -48,39 +48,78 @@
 **
 ****************************************************************************/
 
-#include "edittreeview.h"
-#include "browserapplication.h"
-#include "history.h"
+#include "printtopdfdialog.h"
+#include "ui_printtopdfdialog.h"
 
-#include <QtGui/QKeyEvent>
+#include <QtCore/QDir>
+#include <QtPrintSupport/QPageSetupDialog>
+#include <QtPrintSupport/QPrinter>
+#include <QtWidgets/QFileDialog>
 
-EditTreeView::EditTreeView(QWidget *parent)
-    : QTreeView(parent)
+PrintToPdfDialog::PrintToPdfDialog(const QString &filePath, QWidget *parent) :
+    QDialog(parent),
+    currentPageLayout(QPageLayout(QPageSize(QPageSize::A4), QPageLayout::Portrait, QMarginsF(0.0, 0.0, 0.0, 0.0))),
+    ui(new Ui::PrintToPdfDialog)
 {
+    ui->setupUi(this);
+    setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
+    connect(ui->chooseFilePathButton, &QToolButton::clicked, this, &PrintToPdfDialog::onChooseFilePathButtonClicked);
+    connect(ui->choosePageLayoutButton, &QToolButton::clicked, this, &PrintToPdfDialog::onChoosePageLayoutButtonClicked);
+    ui->choosePageLayoutButton->hide();
+    updatePageLayoutLabel();
+    setFilePath(filePath);
 }
 
-void EditTreeView::keyPressEvent(QKeyEvent *event)
+PrintToPdfDialog::~PrintToPdfDialog()
 {
-    if ((event->key() == Qt::Key_Delete
-        || event->key() == Qt::Key_Backspace)
-        && model()) {
-        removeOne();
-    } else {
-        QAbstractItemView::keyPressEvent(event);
-    }
+    delete ui;
 }
 
-void EditTreeView::removeOne()
+void PrintToPdfDialog::onChoosePageLayoutButtonClicked()
 {
-    if (!model())
+    QPrinter printer;
+    printer.setPageLayout(currentPageLayout);
+
+    QPageSetupDialog dlg(&printer, this);
+    if (dlg.exec() != QDialog::Accepted)
         return;
-    QModelIndex ci = currentIndex();
-    BrowserApplication::historyManager()->removeHistoryEntry(model()->data(ci,HistoryModel::UrlStringRole).toString());
+    currentPageLayout.setPageSize(printer.pageLayout().pageSize());
+    currentPageLayout.setOrientation(printer.pageLayout().orientation());
+    updatePageLayoutLabel();
 }
 
-void EditTreeView::removeAll()
+void PrintToPdfDialog::onChooseFilePathButtonClicked()
 {
-    if (!model())
+    QFileInfo fi(filePath());
+    QFileDialog dlg(this, tr("Save PDF as"), fi.absolutePath());
+    dlg.setAcceptMode(QFileDialog::AcceptSave);
+    dlg.setDefaultSuffix(QStringLiteral(".pdf"));
+    dlg.selectFile(fi.absoluteFilePath());
+    if (dlg.exec() != QDialog::Accepted)
         return;
-    BrowserApplication::historyManager()->clear();
+    setFilePath(dlg.selectedFiles().first());
+}
+
+QString PrintToPdfDialog::filePath() const
+{
+    return QDir::fromNativeSeparators(ui->filePathLineEdit->text());
+}
+
+void PrintToPdfDialog::setFilePath(const QString &filePath)
+{
+    ui->filePathLineEdit->setText(QDir::toNativeSeparators(filePath));
+}
+
+QPageLayout PrintToPdfDialog::pageLayout() const
+{
+    return currentPageLayout;
+}
+
+void PrintToPdfDialog::updatePageLayoutLabel()
+{
+    ui->pageLayoutLabel->setText(QString("%1, %2").arg(
+                                   currentPageLayout.pageSize().name()).arg(
+                                   currentPageLayout.orientation() == QPageLayout::Portrait
+                                   ? tr("Portrait") : tr("Landscape")
+                                   ));
 }

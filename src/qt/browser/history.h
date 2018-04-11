@@ -1,39 +1,48 @@
 /****************************************************************************
 **
-** Copyright (C) 2013 Digia Plc and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/legal
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
-** This file is part of the demonstration applications of the Qt Toolkit.
+** This file is part of the examples of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL$
+** $QT_BEGIN_LICENSE:BSD$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and Digia.  For licensing terms and
-** conditions see http://qt.digia.com/licensing.  For further information
-** use the contact form at http://qt.digia.com/contact-us.
+** a written agreement between you and The Qt Company. For licensing terms
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** BSD License Usage
+** Alternatively, you may use this file under the terms of the BSD license
+** as follows:
 **
-** In addition, as a special exception, Digia gives you certain additional
-** rights.  These rights are described in the Digia Qt LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** "Redistribution and use in source and binary forms, with or without
+** modification, are permitted provided that the following conditions are
+** met:
+**   * Redistributions of source code must retain the above copyright
+**     notice, this list of conditions and the following disclaimer.
+**   * Redistributions in binary form must reproduce the above copyright
+**     notice, this list of conditions and the following disclaimer in
+**     the documentation and/or other materials provided with the
+**     distribution.
+**   * Neither the name of The Qt Company Ltd nor the names of its
+**     contributors may be used to endorse or promote products derived
+**     from this software without specific prior written permission.
 **
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3.0 as published by the Free Software
-** Foundation and appearing in the file LICENSE.GPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU General Public License version 3.0 requirements will be
-** met: http://www.gnu.org/copyleft/gpl.html.
 **
+** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+** "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+** LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+** A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+** OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+** SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+** LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+** OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
 **
 ** $QT_END_LICENSE$
 **
@@ -51,8 +60,6 @@
 #include <QtCore/QUrl>
 
 #include <QtCore/QSortFilterProxyModel>
-
-#include <QtWebKit/QWebHistoryInterface>
 
 class HistoryItem
 {
@@ -79,12 +86,13 @@ class AutoSaver;
 class HistoryModel;
 class HistoryFilterModel;
 class HistoryTreeModel;
-class HistoryManager : public QWebHistoryInterface
+
+class HistoryManager : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(int historyLimit READ historyLimit WRITE setHistoryLimit)
 
-Q_SIGNALS:
+signals:
     void historyReset();
     void entryAdded(const HistoryItem &item);
     void entryRemoved(const HistoryItem &item);
@@ -95,14 +103,16 @@ public:
     ~HistoryManager();
 
     bool historyContains(const QString &url) const;
+
     void addHistoryEntry(const QString &url);
+    void removeHistoryEntry(const QString &url);
 
     void updateHistoryItem(const QUrl &url, const QString &title);
 
     int historyLimit() const;
     void setHistoryLimit(int limit);
 
-    QList<HistoryItem> history() const;
+    QList<HistoryItem>& history();
     void setHistory(const QList<HistoryItem> &history, bool loadedAndSorted = false);
 
     // History manager keeps around these models for use by the completer and other classes
@@ -110,16 +120,17 @@ public:
     HistoryFilterModel *historyFilterModel() const;
     HistoryTreeModel *historyTreeModel() const;
 
-public Q_SLOTS:
+public slots:
     void clear();
     void loadSettings();
 
-private Q_SLOTS:
+private slots:
     void save();
-    void checkForExpired();
+    void checkForExpired(bool removeExpiredEntriesDirectly = false);
 
 protected:
     void addHistoryItem(const HistoryItem &item);
+    void removeHistoryItem(const HistoryItem &item);
 
 private:
     void load();
@@ -139,9 +150,10 @@ class HistoryModel : public QAbstractTableModel
 {
     Q_OBJECT
 
-public Q_SLOTS:
+public slots:
     void historyReset();
-    void entryAdded();
+    void entryAdded(const HistoryItem &item);
+    void entryRemoved(const HistoryItem &item);
     void entryUpdated(int offset);
 
 public:
@@ -177,7 +189,6 @@ public:
 
     inline bool historyContains(const QString &url) const
         { load(); return m_historyHash.contains(url); }
-    int historyLocation(const QString &url) const;
 
     QModelIndex mapFromSource(const QModelIndex &sourceIndex) const;
     QModelIndex mapToSource(const QModelIndex &proxyIndex) const;
@@ -188,9 +199,8 @@ public:
     QModelIndex index(int, int, const QModelIndex& = QModelIndex()) const;
     QModelIndex parent(const QModelIndex& index= QModelIndex()) const;
     bool removeRows(int row, int count, const QModelIndex &parent = QModelIndex());
-    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;
 
-private Q_SLOTS:
+private slots:
     void sourceReset();
     void sourceDataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight);
     void sourceRowsInserted(const QModelIndex &parent, int start, int end);
@@ -236,7 +246,7 @@ class HistoryMenu : public ModelMenu
 {
     Q_OBJECT
 
-Q_SIGNALS:
+signals:
     void openUrl(const QUrl &url);
 
 public:
@@ -247,7 +257,7 @@ protected:
     bool prePopulated();
     void postPopulated();
 
-private Q_SLOTS:
+private slots:
     void activated(const QModelIndex &index);
     void showHistoryDialog();
 
@@ -274,7 +284,7 @@ public:
     QModelIndex parent(const QModelIndex& index= QModelIndex()) const;
     void setSourceModel(QAbstractItemModel *sourceModel);
 
-private Q_SLOTS:
+private slots:
     void sourceReset();
 
 };
@@ -302,11 +312,12 @@ public:
 
     void setSourceModel(QAbstractItemModel *sourceModel);
 
-private Q_SLOTS:
+private slots:
     void sourceReset();
     void sourceRowsInserted(const QModelIndex &parent, int start, int end);
     void sourceRowsRemoved(const QModelIndex &parent, int start, int end);
-
+    void sourceDataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight,
+                           const QVector<int> roles);
 private:
     int sourceDateRow(int row) const;
     mutable QList<int> m_sourceRowCache;
@@ -333,13 +344,13 @@ class HistoryDialog : public QDialog, public Ui_HistoryDialog
 {
     Q_OBJECT
 
-Q_SIGNALS:
+signals:
     void openUrl(const QUrl &url);
 
 public:
     HistoryDialog(QWidget *parent = 0, HistoryManager *history = 0);
 
-private Q_SLOTS:
+private slots:
     void customContextMenuRequested(const QPoint &pos);
     void open();
     void copy();
@@ -347,4 +358,3 @@ private Q_SLOTS:
 };
 
 #endif // HISTORY_H
-

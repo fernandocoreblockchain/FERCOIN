@@ -1,39 +1,48 @@
 /****************************************************************************
 **
-** Copyright (C) 2013 Digia Plc and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/legal
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
-** This file is part of the demonstration applications of the Qt Toolkit.
+** This file is part of the examples of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL$
+** $QT_BEGIN_LICENSE:BSD$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and Digia.  For licensing terms and
-** conditions see http://qt.digia.com/licensing.  For further information
-** use the contact form at http://qt.digia.com/contact-us.
+** a written agreement between you and The Qt Company. For licensing terms
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** BSD License Usage
+** Alternatively, you may use this file under the terms of the BSD license
+** as follows:
 **
-** In addition, as a special exception, Digia gives you certain additional
-** rights.  These rights are described in the Digia Qt LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** "Redistribution and use in source and binary forms, with or without
+** modification, are permitted provided that the following conditions are
+** met:
+**   * Redistributions of source code must retain the above copyright
+**     notice, this list of conditions and the following disclaimer.
+**   * Redistributions in binary form must reproduce the above copyright
+**     notice, this list of conditions and the following disclaimer in
+**     the documentation and/or other materials provided with the
+**     distribution.
+**   * Neither the name of The Qt Company Ltd nor the names of its
+**     contributors may be used to endorse or promote products derived
+**     from this software without specific prior written permission.
 **
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3.0 as published by the Free Software
-** Foundation and appearing in the file LICENSE.GPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU General Public License version 3.0 requirements will be
-** met: http://www.gnu.org/copyleft/gpl.html.
 **
+** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+** "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+** LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+** A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+** OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+** SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+** LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+** OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
 **
 ** $QT_END_LICENSE$
 **
@@ -45,50 +54,47 @@
 #include "ui_downloads.h"
 #include "ui_downloaditem.h"
 
-#include <QtNetwork/QNetworkReply>
-
-#include <QtCore/QFile>
+#include <QtCore/QFileInfo>
 #include <QtCore/QTime>
+#include <QtCore/QUrl>
 
-class DownloadItem : public QWidget, public Ui_DownloadItem
+#include <QWebEngineDownloadItem>
+
+class DownloadManager;
+class DownloadWidget : public QWidget, public Ui_DownloadItem
 {
     Q_OBJECT
 
-Q_SIGNALS:
+signals:
     void statusChanged();
 
 public:
-    DownloadItem(QNetworkReply *reply = 0, bool requestFileName = false, QWidget *parent = 0);
+    DownloadWidget(QWebEngineDownloadItem *download, QWidget *parent = 0);
     bool downloading() const;
     bool downloadedSuccessfully() const;
 
-    QUrl m_url;
+    void init();
+    bool getFileName(bool promptForFileName = false);
 
-    QFile m_output;
-    QNetworkReply *m_reply;
-
-private Q_SLOTS:
+private slots:
     void stop();
-    void tryAgain();
     void open();
 
-    void downloadReadyRead();
-    void error(QNetworkReply::NetworkError code);
     void downloadProgress(qint64 bytesReceived, qint64 bytesTotal);
-    void metaDataChanged();
     void finished();
 
 private:
-    void getFileName();
-    void init();
+    friend class DownloadManager;
     void updateInfoLabel();
     QString dataString(int size) const;
 
-    QString saveFileName(const QString &directory) const;
-
-    bool m_requestFileName;
+    QUrl m_url;
+    QFileInfo m_file;
     qint64 m_bytesReceived;
     QTime m_downloadTime;
+    bool m_stopped;
+
+    QScopedPointer<QWebEngineDownloadItem> m_download;
 };
 
 class AutoSaver;
@@ -101,7 +107,6 @@ class DownloadManager : public QDialog, public Ui_DownloadDialog
 {
     Q_OBJECT
     Q_PROPERTY(RemovePolicy removePolicy READ removePolicy WRITE setRemovePolicy)
-    Q_ENUMS(RemovePolicy)
 
 public:
     enum RemovePolicy {
@@ -109,6 +114,7 @@ public:
         Exit,
         SuccessFullDownload
     };
+    Q_ENUM(RemovePolicy)
 
     DownloadManager(QWidget *parent = 0);
     ~DownloadManager();
@@ -117,27 +123,23 @@ public:
     RemovePolicy removePolicy() const;
     void setRemovePolicy(RemovePolicy policy);
 
-public Q_SLOTS:
-    void download(const QNetworkRequest &request, bool requestFileName = false);
-    inline void download(const QUrl &url, bool requestFileName = false)
-        { download(QNetworkRequest(url), requestFileName); }
-    void handleUnsupportedContent(QNetworkReply *reply, bool requestFileName = false);
+public slots:
+    void download(QWebEngineDownloadItem *download);
     void cleanup();
 
-private Q_SLOTS:
+private slots:
     void save() const;
     void updateRow();
 
 private:
-    void addItem(DownloadItem *item);
+    void addItem(DownloadWidget *item);
     void updateItemCount();
     void load();
 
     AutoSaver *m_autoSaver;
     DownloadModel *m_model;
-    QNetworkAccessManager *m_manager;
     QFileIconProvider *m_iconProvider;
-    QList<DownloadItem*> m_downloads;
+    QList<DownloadWidget*> m_downloads;
     RemovePolicy m_removePolicy;
     friend class DownloadModel;
 };
@@ -159,4 +161,3 @@ private:
 };
 
 #endif // DOWNLOADMANAGER_H
-
