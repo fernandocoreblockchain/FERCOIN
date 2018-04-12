@@ -645,10 +645,10 @@ void KoreGUI::createToolBars()
         toolbar->addAction(openTradingwindowAction);
     }
 
-    //browserButton = new QPushButton(this);
-    //browserButton->setText("Web Browser");
-    //connect(browserButton, SIGNAL(released()), this, SLOT(browserClicked()));
-    //toolbar->addWidget(browserButton);
+    browserButton = new QPushButton(this);
+    browserButton->setText("Web Browser");
+    connect(browserButton, SIGNAL(released()), this, SLOT(browserClicked()));
+    toolbar->addWidget(browserButton);
 
     toolbar->addWidget(space);
 
@@ -849,7 +849,7 @@ void KoreGUI::showHelpMessageClicked()
 
 void KoreGUI::browserClicked()
 {
-   // BrowserApplication::instance()->newMainWindow();
+   BrowserApplication::instance()->newMainWindow();
 }
 
 void KoreGUI::gotoPbxClient()

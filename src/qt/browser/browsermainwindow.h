@@ -1,39 +1,48 @@
 /****************************************************************************
 **
-** Copyright (C) 2013 Digia Plc and/or its subsidiary(-ies).
-** Contact: http://www.qt-project.org/legal
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
-** This file is part of the demonstration applications of the Qt Toolkit.
+** This file is part of the examples of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL$
+** $QT_BEGIN_LICENSE:BSD$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and Digia.  For licensing terms and
-** conditions see http://qt.digia.com/licensing.  For further information
-** use the contact form at http://qt.digia.com/contact-us.
+** a written agreement between you and The Qt Company. For licensing terms
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** BSD License Usage
+** Alternatively, you may use this file under the terms of the BSD license
+** as follows:
 **
-** In addition, as a special exception, Digia gives you certain additional
-** rights.  These rights are described in the Digia Qt LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** "Redistribution and use in source and binary forms, with or without
+** modification, are permitted provided that the following conditions are
+** met:
+**   * Redistributions of source code must retain the above copyright
+**     notice, this list of conditions and the following disclaimer.
+**   * Redistributions in binary form must reproduce the above copyright
+**     notice, this list of conditions and the following disclaimer in
+**     the documentation and/or other materials provided with the
+**     distribution.
+**   * Neither the name of The Qt Company Ltd nor the names of its
+**     contributors may be used to endorse or promote products derived
+**     from this software without specific prior written permission.
 **
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3.0 as published by the Free Software
-** Foundation and appearing in the file LICENSE.GPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU General Public License version 3.0 requirements will be
-** met: http://www.gnu.org/copyleft/gpl.html.
 **
+** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+** "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+** LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+** A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+** OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+** SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+** LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+** OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
 **
 ** $QT_END_LICENSE$
 **
@@ -46,10 +55,14 @@
 #include <QtGui/QIcon>
 #include <QtCore/QUrl>
 
+QT_BEGIN_NAMESPACE
+class QPrinter;
+class QWebEnginePage;
+QT_END_NAMESPACE
+
 class AutoSaver;
 class BookmarksToolBar;
 class ChaseWidget;
-class QWebFrame;
 class TabWidget;
 class ToolbarSearch;
 class WebView;
@@ -67,20 +80,23 @@ public:
     ~BrowserMainWindow();
     QSize sizeHint() const;
 
+    static const char *defaultHome;
+
 public:
     TabWidget *tabWidget() const;
     WebView *currentTab() const;
     QByteArray saveState(bool withTabs = true) const;
     bool restoreState(const QByteArray &state);
+    Q_INVOKABLE void runScriptOnOpenViews(const QString &);
 
-public Q_SLOTS:
+public slots:
     void loadPage(const QString &url);
     void slotHome();
 
 protected:
     void closeEvent(QCloseEvent *event);
 
-private Q_SLOTS:
+private slots:
     void save();
 
     void slotLoadProgress(int);
@@ -94,6 +110,7 @@ private Q_SLOTS:
     void slotFileOpen();
     void slotFilePrintPreview();
     void slotFilePrint();
+    void slotFilePrintToPDF();
     void slotPrivateBrowsing();
     void slotFileSaveAs();
     void slotEditFind();
@@ -104,11 +121,9 @@ private Q_SLOTS:
     void slotViewZoomIn();
     void slotViewZoomOut();
     void slotViewResetZoom();
-    void slotViewZoomTextOnly(bool enable);
     void slotViewToolbar();
     void slotViewBookmarksBar();
     void slotViewStatusbar();
-    void slotViewPageSource();
     void slotViewFullScreen(bool enable);
 
     void slotWebSearch();
@@ -123,8 +138,10 @@ private Q_SLOTS:
     void slotOpenActionUrl(QAction *action);
     void slotShowWindow();
     void slotSwapFocus();
+    void slotHandlePdfPrinted(const QByteArray&);
 
-    void printRequested(QWebFrame *frame);
+    void slotHandlePagePrinted(bool result);
+    void printRequested(QWebEnginePage *page);
     void geometryChangeRequested(const QRect &geometry);
     void updateToolbarActionText(bool visible);
     void updateBookmarksToolbarActionText(bool visible);
@@ -134,6 +151,7 @@ private:
     void setupMenu();
     void setupToolBar();
     void updateStatusbarActionText(bool visible);
+    void handleFindTextResult(bool found);
 
 private:
     QToolBar *m_navigationBar;
@@ -158,11 +176,14 @@ private:
     QAction *m_restoreLastSession;
     QAction *m_addBookmark;
 
+    QPrinter *m_currentPrinter;
+
     QIcon m_reloadIcon;
     QIcon m_stopIcon;
 
     QString m_lastSearch;
+    QString m_printerOutputFileName;
+    friend class BrowserApplication;
 };
 
 #endif // BROWSERMAINWINDOW_H
-
