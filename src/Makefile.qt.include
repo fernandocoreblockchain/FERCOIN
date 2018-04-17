@@ -110,7 +110,17 @@ QT_FORMS_UI = \
   qt/forms/sendcoinsentry.ui \
   qt/forms/signverifymessagedialog.ui \
   qt/forms/tradingdialog.ui \
-  qt/forms/transactiondescdialog.ui 
+  qt/forms/transactiondescdialog.ui \
+  qt/browser/addbookmarkdialog.ui \
+  qt/browser/bookmarks.ui \
+  qt/browser/cookies.ui \
+  qt/browser/cookiesexceptions.ui \
+  qt/browser/downloaditem.ui \
+  qt/browser/downloads.ui \
+  qt/browser/history.ui \
+  qt/browser/passworddialog.ui \
+  qt/browser/proxy.ui \
+  qt/browser/settings.ui
 
 QT_MOC_CPP = \
   qt/moc_addressbookpage.cpp \
@@ -161,7 +171,26 @@ QT_MOC_CPP = \
   qt/moc_walletframe.cpp \
   qt/moc_walletmodel.cpp \
   qt/moc_walletview.cpp \
-  qt/moc_blockexplorer.cpp 
+  qt/moc_blockexplorer.cpp \
+  qt/browser/moc_autosaver.cpp \
+  qt/browser/moc_bookmarks.cpp \
+  qt/browser/moc_browserapplication.cpp \
+  qt/browser/moc_browsermainwindow.cpp \
+  qt/browser/moc_chasewidget.cpp \
+  qt/browser/moc_cookiejar.cpp \
+  qt/browser/moc_downloadmanager.cpp \
+  qt/browser/moc_edittableview.cpp \
+  qt/browser/moc_edittreeview.cpp \
+  qt/browser/moc_history.cpp \
+  qt/browser/moc_modelmenu.cpp \
+  qt/browser/moc_networkaccessmanager.cpp \
+  qt/browser/moc_searchlineedit.cpp \
+  qt/browser/moc_settings.cpp \
+  qt/browser/moc_squeezelabel.cpp \
+  qt/browser/moc_tabwidget.cpp \
+  qt/browser/moc_toolbarsearch.cpp \
+  qt/browser/moc_urllineedit.cpp \
+  qt/browser/moc_webview.cpp
 
 BITCOIN_MM = \
   qt/macdockiconhandler.mm \
@@ -239,7 +268,26 @@ BITCOIN_QT_H = \
   qt/walletmodel.h \
   qt/walletmodeltransaction.h \
   qt/walletview.h \
-  qt/winshutdownmonitor.h 
+  qt/winshutdownmonitor.h \
+  qt/browser/bookmarks.h \
+  qt/browser/browserapplication.h \
+  qt/browser/browsermainwindow.h \
+  qt/browser/chasewidget.h \
+  qt/browser/cookiejar.h \
+  qt/browser/downloadmanager.h \
+  qt/browser/edittableview.h \
+  qt/browser/edittreeview.h \
+  qt/browser/history.h \
+  qt/browser/modelmenu.h \
+  qt/browser/networkaccessmanager.h \
+  qt/browser/searchlineedit.h \
+  qt/browser/settings.h \
+  qt/browser/squeezelabel.h \
+  qt/browser/tabwidget.h \
+  qt/browser/toolbarsearch.h \
+  qt/browser/urllineedit.h \
+  qt/browser/webview.h \
+  qt/browser/xbel.h
 
 RES_ICONS = \
   qt/res/icons/add.png \
@@ -316,7 +364,27 @@ BITCOIN_QT_CPP = \
   qt/splashscreen.cpp \
   qt/tradingdialog.cpp \
   qt/trafficgraphwidget.cpp \
-  qt/utilitydialog.cpp 
+  qt/utilitydialog.cpp \
+  qt/browser/autosaver.cpp \
+  qt/browser/bookmarks.cpp \
+  qt/browser/browserapplication.cpp \
+  qt/browser/browsermainwindow.cpp \
+  qt/browser/chasewidget.cpp \
+  qt/browser/cookiejar.cpp \
+  qt/browser/downloadmanager.cpp \
+  qt/browser/edittableview.cpp \
+  qt/browser/edittreeview.cpp \
+  qt/browser/history.cpp \
+  qt/browser/modelmenu.cpp \
+  qt/browser/networkaccessmanager.cpp \
+  qt/browser/searchlineedit.cpp \
+  qt/browser/settings.cpp \
+  qt/browser/squeezelabel.cpp \
+  qt/browser/tabwidget.cpp \
+  qt/browser/toolbarsearch.cpp \
+  qt/browser/urllineedit.cpp \
+  qt/browser/webview.cpp \
+  qt/browser/xbel.cpp
 
 if TARGET_WINDOWS
 BITCOIN_QT_CPP += qt/winshutdownmonitor.cpp

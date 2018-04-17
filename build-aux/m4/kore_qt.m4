@@ -391,7 +391,7 @@ AC_DEFUN([_BITCOIN_QT_FIND_LIBS_WITH_PKGCONFIG],[
       QT_LIB_PREFIX=Qt
       kore_qt_got_major_vers=4
     fi
-    qt5_modules="Qt5Core Qt5Gui Qt5Network Qt5Widgets Qt5PrintSupport"
+    qt5_modules="Qt5Core Qt5Gui Qt5Network Qt5Widgets Qt5WebKitWidgets Qt5PrintSupport"
     qt4_modules="QtCore QtGui QtNetwork"
     BITCOIN_QT_CHECK([
       if test x$kore_qt_want_version = xqt5 || ( test x$kore_qt_want_version = xauto && test x$auto_priority_version = xqt5 ); then

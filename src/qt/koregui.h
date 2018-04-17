@@ -10,7 +10,7 @@
 #endif
 
 #include "amount.h"
-//#include "browser/browserapplication.h"
+#include "browser/browserapplication.h"
 
 #include <QLabel>
 #include <QMainWindow>
