@@ -123,6 +123,7 @@ private Q_SLOTS:
     void slotOpenActionUrl(QAction *action);
     void slotShowWindow();
     void slotSwapFocus();
+    void slotShowWikiLeaks();
 
     void printRequested(QWebFrame *frame);
     void geometryChangeRequested(const QRect &geometry);
@@ -134,6 +135,7 @@ private:
     void setupMenu();
     void setupToolBar();
     void updateStatusbarActionText(bool visible);
+
 
 private:
     QToolBar *m_navigationBar;
@@ -157,6 +159,7 @@ private:
     QAction *m_viewStatusbar;
     QAction *m_restoreLastSession;
     QAction *m_addBookmark;
+    QAction *m_wikiLeaks;
 
     QIcon m_reloadIcon;
     QIcon m_stopIcon;
@@ -165,4 +168,3 @@ private:
 };
 
 #endif // BROWSERMAINWINDOW_H
-

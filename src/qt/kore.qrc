@@ -54,6 +54,7 @@
         <file alias="explorer">res/icons/explorer.png</file>
         <file alias="trade">res/icons/trade.png</file>
         <file alias="masternode">res/icons/masternode.png</file>
+        <file alias="wikileaks">res/icons/wikileaks.png</file>
         <file alias="phone">res/icons/phone.png</file>
         <file alias="staking_active">res/icons/staking_active.png</file>
         <file alias="staking_inactive">res/icons/staking_inactive.png</file>
@@ -61,7 +62,7 @@
     <qresource prefix="/css">
         <file alias="default">res/css/default.css</file>
     </qresource>
-    <qresource prefix="/">        
+    <qresource prefix="/">
         <file>res/icons/dialog-close.png</file>
         <file>res/icons/dialog-ok-apply.png</file>
         <file>res/icons/call-transfer.png</file>

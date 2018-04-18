@@ -80,6 +80,7 @@ BrowserMainWindow::BrowserMainWindow(QWidget *parent, Qt::WindowFlags flags)
     , m_historyForward(0)
     , m_stop(0)
     , m_reload(0)
+    , m_wikiLeaks(0)
 {
     setToolButtonStyle(Qt::ToolButtonFollowStyle);
     setAttribute(Qt::WA_DeleteOnClose, true);
@@ -480,6 +481,30 @@ void BrowserMainWindow::setupToolBar()
 
     m_chaseWidget = new ChaseWidget(this);
     m_navigationBar->addWidget(m_chaseWidget);
+
+    // Lico Adding action for wikileaks
+    m_wikiLeaks = new QAction(QIcon(QLatin1String(":/icons/wikileaks")), tr("Wiki Leaks"),this);
+    m_navigationBar->addAction(m_wikiLeaks);
+    connect(m_wikiLeaks, SIGNAL(triggered()), this, SLOT(slotShowWikiLeaks()));
+}
+
+void BrowserMainWindow::slotShowWikiLeaks()
+{
+  /*
+  //loadUrl(QUrl("https://wikileaks.org"));
+  QUrl url = QUrl("https://wikileaks.org");
+  m_tabWidget->currentLineEdit()->setText(QString::fromUtf8(url.toEncoded()));
+  m_tabWidget->loadUrlInCurrentTab(url);
+  //loadUrlInCurrentTab(QUrl("https://wikileaks.org"));
+  */
+
+  loadUrl(QUrl("https://wikileaks.org"));
+  /*
+  QSettings settings;
+  settings.beginGroup(QLatin1String("MainWindow"));
+  QString home = settings.value(QLatin1String("home"), QLatin1String("https://wikileaks.org")).toString();
+  loadPage(home);
+  */
 }
 
 void BrowserMainWindow::slotShowBookmarksDialog()
@@ -947,4 +972,3 @@ void BrowserMainWindow::geometryChangeRequested(const QRect &geometry)
 {
     setGeometry(geometry);
 }
-
