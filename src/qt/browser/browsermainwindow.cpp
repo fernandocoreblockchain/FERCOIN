@@ -483,28 +483,15 @@ void BrowserMainWindow::setupToolBar()
     m_navigationBar->addWidget(m_chaseWidget);
 
     // Lico Adding action for wikileaks
-    m_wikiLeaks = new QAction(QIcon(QLatin1String(":/icons/wikileaks")), tr("Wiki Leaks"),this);
+    m_wikiLeaks = new QAction(QIcon(QLatin1String(":/icons/wikileaks")), tr(""),this);
     m_navigationBar->addAction(m_wikiLeaks);
     connect(m_wikiLeaks, SIGNAL(triggered()), this, SLOT(slotShowWikiLeaks()));
 }
 
 void BrowserMainWindow::slotShowWikiLeaks()
 {
-  /*
-  //loadUrl(QUrl("https://wikileaks.org"));
-  QUrl url = QUrl("https://wikileaks.org");
-  m_tabWidget->currentLineEdit()->setText(QString::fromUtf8(url.toEncoded()));
-  m_tabWidget->loadUrlInCurrentTab(url);
-  //loadUrlInCurrentTab(QUrl("https://wikileaks.org"));
-  */
 
-  loadUrl(QUrl("https://wikileaks.org"));
-  /*
-  QSettings settings;
-  settings.beginGroup(QLatin1String("MainWindow"));
-  QString home = settings.value(QLatin1String("home"), QLatin1String("https://wikileaks.org")).toString();
-  loadPage(home);
-  */
+  loadUrl(QUrl("https://wikileaks.org/#submit_help_tips"));
 }
 
 void BrowserMainWindow::slotShowBookmarksDialog()
